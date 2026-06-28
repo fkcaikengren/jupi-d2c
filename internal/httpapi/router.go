@@ -52,13 +52,15 @@ func corsMiddleware() gin.HandlerFunc {
 	maxAge := strconv.Itoa(int(corsMaxAge / time.Second))
 	return func(c *gin.Context) {
 		h := c.Writer.Header()
+		// 与 Hono cors() 一致：实际响应只带 Allow-Origin / Expose-Headers，
+		// Allow-Methods / Allow-Headers / Max-Age 仅在 OPTIONS 预检时下发。
 		h.Set("Access-Control-Allow-Origin", "*")
-		h.Set("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-		h.Set("Access-Control-Allow-Headers", "Content-Type,Authorization,PRIVATE-TOKEN")
 		h.Set("Access-Control-Expose-Headers", "Content-Length")
-		h.Set("Access-Control-Max-Age", maxAge)
 
 		if c.Request.Method == http.MethodOptions {
+			h.Set("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+			h.Set("Access-Control-Allow-Headers", "Content-Type,Authorization,PRIVATE-TOKEN")
+			h.Set("Access-Control-Max-Age", maxAge)
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}

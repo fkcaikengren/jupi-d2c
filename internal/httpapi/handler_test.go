@@ -178,5 +178,25 @@ func TestCORS_Preflight(t *testing.T) {
 	req.Header.Set("Origin", "http://example.com")
 	req.Header.Set("Access-Control-Request-Method", "POST")
 	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusNoContent, w.Code)
 	assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
+	// 预检响应带方法/头/Max-Age（与 Hono cors() 一致）。
+	assert.Equal(t, "GET,POST,OPTIONS", w.Header().Get("Access-Control-Allow-Methods"))
+	assert.Equal(t, "Content-Type,Authorization,PRIVATE-TOKEN", w.Header().Get("Access-Control-Allow-Headers"))
+	assert.Equal(t, "86400", w.Header().Get("Access-Control-Max-Age"))
+}
+
+func TestCORS_NonPreflightHeaders(t *testing.T) {
+	r := newTestServer(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req.Header.Set("Origin", "http://example.com")
+	r.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	// 实际响应只带 Allow-Origin / Expose-Headers，不带预检专用头（与 Hono 一致）。
+	assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "Content-Length", w.Header().Get("Access-Control-Expose-Headers"))
+	assert.Empty(t, w.Header().Get("Access-Control-Allow-Methods"))
+	assert.Empty(t, w.Header().Get("Access-Control-Allow-Headers"))
+	assert.Empty(t, w.Header().Get("Access-Control-Max-Age"))
 }
