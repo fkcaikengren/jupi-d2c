@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"d2c-manager/internal/config"
+	"jupi-d2c/internal/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,13 +20,12 @@ import (
 func testCfg(t *testing.T) config.AppConfig {
 	t.Helper()
 	return config.AppConfig{
-		Port:          0, // ":0" → 内核分配空闲端口
-		Token:         "secret",
-		UploadDir:     t.TempDir(),
-		PublicBaseURL: "http://localhost",
-		MaxFileSize:   1024,
-		WorkerCount:   1,
-		QueueSize:     4,
+		Port:        0, // ":0" → 内核分配空闲端口
+		Token:       "secret",
+		UploadDir:   t.TempDir(),
+		MaxFileSize: 1024,
+		WorkerCount: 1,
+		QueueSize:   4,
 	}
 }
 

@@ -1,4 +1,4 @@
-module d2c-manager
+module jupi-d2c
 
 go 1.26.4
 

@@ -24,10 +24,10 @@ func TestSaveBytes_WritesFileAndReturnsMeta(t *testing.T) {
 	dir := t.TempDir()
 	data := []byte("hello world")
 	saved, err := SaveBytes(SaveOptions{
-		Bytes:         data,
-		ContentType:   "image/png",
-		UploadDir:     dir,
-		PublicBaseURL: "http://localhost:3000",
+		Bytes:       data,
+		ContentType: "image/png",
+		UploadDir:   dir,
+		BaseURL:     "http://localhost:3000",
 	})
 	require.NoError(t, err)
 
@@ -44,9 +44,9 @@ func TestSaveBytes_WritesFileAndReturnsMeta(t *testing.T) {
 func TestSaveBytes_DefaultContentType(t *testing.T) {
 	dir := t.TempDir()
 	saved, err := SaveBytes(SaveOptions{
-		Bytes:         []byte("x"),
-		UploadDir:     dir,
-		PublicBaseURL: "http://localhost:3000",
+		Bytes:     []byte("x"),
+		UploadDir: dir,
+		BaseURL:   "http://localhost:3000",
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "application/octet-stream", saved.ContentType)

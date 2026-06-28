@@ -8,7 +8,7 @@ import (
 	"errors"
 	"sync"
 
-	"d2c-manager/internal/infra/storage"
+	"jupi-d2c/internal/infra/storage"
 )
 
 // ErrShuttingDown 在池已经开始关闭后提交任务时返回。

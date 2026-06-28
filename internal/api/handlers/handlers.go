@@ -3,9 +3,9 @@
 package handlers
 
 import (
-	"d2c-manager/internal/api/services"
-	"d2c-manager/internal/config"
-	"d2c-manager/internal/infra/queue"
+	"jupi-d2c/internal/api/services"
+	"jupi-d2c/internal/config"
+	"jupi-d2c/internal/infra/queue"
 )
 
 // Handlers 持有处理请求所需的依赖：启动期配置快照与各 service。

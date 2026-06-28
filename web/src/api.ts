@@ -3,7 +3,6 @@
 export interface AppConfig {
   port: number
   uploadDir: string
-  publicBaseURL: string
   maxFileSize: number
   workerCount: number
   queueSize: number
@@ -19,7 +18,6 @@ export interface ConfigResponse {
 export interface ConfigUpdate {
   port?: number
   uploadDir?: string
-  publicBaseURL?: string
   maxFileSize?: number
   workerCount?: number
   queueSize?: number

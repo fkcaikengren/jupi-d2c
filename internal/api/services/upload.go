@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"d2c-manager/internal/infra/queue"
-	"d2c-manager/internal/infra/storage"
+	"jupi-d2c/internal/infra/queue"
+	"jupi-d2c/internal/infra/storage"
 )
 
 // ErrUnavailable 标记"请求未能进入处理"这一类失败：池正在关闭、入队失败或上下文已取消。

@@ -9,7 +9,7 @@ import (
 )
 
 // DefaultPIDFile 是未显式指定时的 PID 文件路径（cwd）。
-const DefaultPIDFile = "./d2c-manager.pid"
+const DefaultPIDFile = "./jupi-d2c.pid"
 
 // WritePIDFile 原子写入 PID（同目录临时文件 + rename），避免并发 start 读到半截内容。
 func WritePIDFile(path string, pid int) error {

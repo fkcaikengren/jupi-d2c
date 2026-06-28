@@ -2,7 +2,7 @@
 // 配置的读取/落盘/重启判定、上传任务的提交。handlers 层依赖本包，本包不反向依赖。
 package services
 
-import "d2c-manager/internal/config"
+import "jupi-d2c/internal/config"
 
 // ConfigService 负责 config.yml 的读取、落盘与"是否需要重启"的判定。
 // running 是 daemon 启动期的配置快照，用于和磁盘配置比对。
@@ -38,7 +38,6 @@ func (s *ConfigService) RestartRequired(c config.AppConfig) bool {
 	return c.Port != r.Port ||
 		c.Token != r.Token ||
 		c.UploadDir != r.UploadDir ||
-		c.PublicBaseURL != r.PublicBaseURL ||
 		c.MaxFileSize != r.MaxFileSize ||
 		c.WorkerCount != r.WorkerCount ||
 		c.QueueSize != r.QueueSize

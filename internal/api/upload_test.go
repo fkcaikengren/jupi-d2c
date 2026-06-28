@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"d2c-manager/internal/config"
-	"d2c-manager/internal/infra/queue"
-	"d2c-manager/internal/infra/storage"
+	"jupi-d2c/internal/config"
+	"jupi-d2c/internal/infra/queue"
+	"jupi-d2c/internal/infra/storage"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -24,13 +24,12 @@ func newTestServer(t *testing.T) (*gin.Engine, string) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	cfg := config.AppConfig{
-		Port:          3000,
-		Token:         "secret",
-		UploadDir:     t.TempDir(),
-		PublicBaseURL: "http://localhost:3000",
-		MaxFileSize:   1024,
-		WorkerCount:   2,
-		QueueSize:     8,
+		Port:        3000,
+		Token:       "secret",
+		UploadDir:   t.TempDir(),
+		MaxFileSize: 1024,
+		WorkerCount: 2,
+		QueueSize:   8,
 	}
 	pool := queue.NewPool(cfg.WorkerCount, cfg.QueueSize, storage.SaveBytes)
 	pool.Start()

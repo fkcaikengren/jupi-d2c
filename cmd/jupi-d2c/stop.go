@@ -5,7 +5,7 @@ import (
 	"syscall"
 	"time"
 
-	"d2c-manager/internal/daemon"
+	"jupi-d2c/internal/daemon"
 
 	"github.com/spf13/cobra"
 )

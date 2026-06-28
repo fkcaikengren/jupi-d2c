@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"d2c-manager/internal/infra/queue"
-	"d2c-manager/internal/infra/storage"
+	"jupi-d2c/internal/infra/queue"
+	"jupi-d2c/internal/infra/storage"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

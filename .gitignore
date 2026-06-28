@@ -1,7 +1,7 @@
 /uploads/
 .env
 /config.yml
-/d2c-manager
+/jupi-d2c
 *.out
 .reasonix/
 

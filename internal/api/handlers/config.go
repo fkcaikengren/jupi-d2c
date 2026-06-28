@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"d2c-manager/internal/config"
+	"jupi-d2c/internal/config"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,13 +12,12 @@ import (
 // ===== 配置 API DTO（camelCase，与 web/src/api.ts 契约一致）=====
 
 type configDTO struct {
-	Port          int    `json:"port"`
-	UploadDir     string `json:"uploadDir"`
-	PublicBaseURL string `json:"publicBaseURL"`
-	MaxFileSize   int64  `json:"maxFileSize"`
-	WorkerCount   int    `json:"workerCount"`
-	QueueSize     int    `json:"queueSize"`
-	TokenSet      bool   `json:"tokenSet"` // token 只写不回显，仅暴露是否已设置
+	Port        int    `json:"port"`
+	UploadDir   string `json:"uploadDir"`
+	MaxFileSize int64  `json:"maxFileSize"`
+	WorkerCount int    `json:"workerCount"`
+	QueueSize   int    `json:"queueSize"`
+	TokenSet    bool   `json:"tokenSet"` // token 只写不回显，仅暴露是否已设置
 }
 
 type configResponse struct {
@@ -28,29 +27,27 @@ type configResponse struct {
 
 // configUpdate 用指针区分"未提供"与"零值"。token 留空/省略=保留现值。
 type configUpdate struct {
-	Port          *int    `json:"port"`
-	UploadDir     *string `json:"uploadDir"`
-	PublicBaseURL *string `json:"publicBaseURL"`
-	MaxFileSize   *int64  `json:"maxFileSize"`
-	WorkerCount   *int    `json:"workerCount"`
-	QueueSize     *int    `json:"queueSize"`
-	Token         *string `json:"token"`
+	Port        *int    `json:"port"`
+	UploadDir   *string `json:"uploadDir"`
+	MaxFileSize *int64  `json:"maxFileSize"`
+	WorkerCount *int    `json:"workerCount"`
+	QueueSize   *int    `json:"queueSize"`
+	Token       *string `json:"token"`
 }
 
 func toDTO(c config.AppConfig) configDTO {
 	return configDTO{
-		Port:          c.Port,
-		UploadDir:     c.UploadDir,
-		PublicBaseURL: c.PublicBaseURL,
-		MaxFileSize:   c.MaxFileSize,
-		WorkerCount:   c.WorkerCount,
-		QueueSize:     c.QueueSize,
-		TokenSet:      c.Token != "",
+		Port:        c.Port,
+		UploadDir:   c.UploadDir,
+		MaxFileSize: c.MaxFileSize,
+		WorkerCount: c.WorkerCount,
+		QueueSize:   c.QueueSize,
+		TokenSet:    c.Token != "",
 	}
 }
 
 // merge 以 base 为基底套用 upd 中已提供的字段，返回合并后的配置。
-// token 留空表示保留现值；publicBaseURL 去掉尾部斜杠。
+// token 留空表示保留现值。
 func merge(base config.AppConfig, upd configUpdate) config.AppConfig {
 	next := base
 	if upd.Port != nil {
@@ -58,9 +55,6 @@ func merge(base config.AppConfig, upd configUpdate) config.AppConfig {
 	}
 	if upd.UploadDir != nil {
 		next.UploadDir = *upd.UploadDir
-	}
-	if upd.PublicBaseURL != nil {
-		next.PublicBaseURL = strings.TrimRight(*upd.PublicBaseURL, "/")
 	}
 	if upd.MaxFileSize != nil {
 		next.MaxFileSize = *upd.MaxFileSize

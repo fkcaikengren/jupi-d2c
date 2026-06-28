@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"d2c-manager/internal/config"
+	"jupi-d2c/internal/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,13 +12,12 @@ import (
 
 func sampleConfig(dir string) config.AppConfig {
 	return config.AppConfig{
-		Port:          3000,
-		Token:         "secret",
-		UploadDir:     dir,
-		PublicBaseURL: "http://localhost:3000",
-		MaxFileSize:   1024,
-		WorkerCount:   2,
-		QueueSize:     8,
+		Port:        3000,
+		Token:       "secret",
+		UploadDir:   dir,
+		MaxFileSize: 1024,
+		WorkerCount: 2,
+		QueueSize:   8,
 	}
 }
 

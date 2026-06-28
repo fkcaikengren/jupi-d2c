@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"d2c-manager/internal/api/services"
-	"d2c-manager/internal/infra/storage"
+	"jupi-d2c/internal/api/services"
+	"jupi-d2c/internal/infra/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -129,12 +129,12 @@ func (h *Handlers) Upload(c *gin.Context) {
 	}
 
 	saved, err := h.uploads.Save(c.Request.Context(), storage.SaveOptions{
-		Bytes:         data,
-		OriginalName:  originalName,
-		ContentType:   in.contentType,
-		UploadDir:     h.cfg.UploadDir,
-		PublicBaseURL: h.cfg.PublicBaseURL,
-		Tag:           in.tag,
+		Bytes:        data,
+		OriginalName: originalName,
+		ContentType:  in.contentType,
+		UploadDir:    h.cfg.UploadDir,
+		BaseURL:      fmt.Sprintf("http://localhost:%d", h.cfg.Port),
+		Tag:          in.tag,
 	})
 	if err != nil {
 		if errors.Is(err, services.ErrUnavailable) {

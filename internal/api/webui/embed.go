@@ -24,13 +24,13 @@ var webuiFS embed.FS
 
 // 未构建前端时返回的占位页，提示构建步骤。
 const placeholderHTML = `<!doctype html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><title>D2C Manager · 未构建</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>Jupi D2C · 未构建</title>
 <style>body{font-family:system-ui,-apple-system,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem;color:#334155;line-height:1.6}code{background:#e2e8f0;padding:.1rem .35rem;border-radius:.25rem}</style>
 </head><body>
-<h1>D2C Manager 控制面板</h1>
+<h1>Jupi D2C 控制面板</h1>
 <p>前端尚未构建，当前仅内嵌了占位锚点。请先构建前端再重新编译二进制：</p>
 <pre><code>cd web &amp;&amp; pnpm install &amp;&amp; pnpm build &amp;&amp; cd ..
-go build -o d2c-manager ./cmd/d2c-manager</code></pre>
+go build -o jupi-d2c ./cmd/jupi-d2c</code></pre>
 <p>配置 API（<code>/api/config</code>、<code>/api/health</code>）不依赖前端，已可用。</p>
 </body></html>`
 

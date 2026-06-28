@@ -11,7 +11,6 @@ import {
 
 type FormState = {
   port: string
-  publicBaseURL: string
   maxFileSize: string
   workerCount: string
   queueSize: string
@@ -22,7 +21,6 @@ type FormState = {
 function toForm(c: AppConfig): FormState {
   return {
     port: String(c.port),
-    publicBaseURL: c.publicBaseURL,
     maxFileSize: String(c.maxFileSize),
     workerCount: String(c.workerCount),
     queueSize: String(c.queueSize),
@@ -68,7 +66,7 @@ function TokenGate({ onSubmit }: { onSubmit: (token: string) => void }) {
     <div className="min-h-screen bg-slate-50 text-slate-800">
       <div className="mx-auto max-w-md px-4 py-16">
         <header className="mb-8">
-          <h1 className="text-2xl font-semibold text-slate-900">D2C Manager</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Jupi D2C</h1>
           <p className="mt-1 text-sm text-slate-500">
             本地控制面板 · 首次访问请输入 <code className="rounded bg-slate-200 px-1 py-0.5">STORAGE_TOKEN</code>。
           </p>
@@ -152,7 +150,6 @@ function Panel({ token, onLogout }: { token: string; onLogout: () => void }) {
     try {
       const payload: ConfigUpdate = {
         port: Number(form.port),
-        publicBaseURL: form.publicBaseURL,
         maxFileSize: Number(form.maxFileSize),
         workerCount: Number(form.workerCount),
         queueSize: Number(form.queueSize),
@@ -179,7 +176,6 @@ function Panel({ token, onLogout }: { token: string; onLogout: () => void }) {
     if (!config || !form) return false
     return (
       Number(form.port) !== config.port ||
-      form.publicBaseURL !== config.publicBaseURL ||
       Number(form.maxFileSize) !== config.maxFileSize ||
       Number(form.workerCount) !== config.workerCount ||
       Number(form.queueSize) !== config.queueSize ||
@@ -193,7 +189,7 @@ function Panel({ token, onLogout }: { token: string; onLogout: () => void }) {
       <div className="mx-auto max-w-2xl px-4 py-10">
         <header className="mb-8 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">D2C Manager</h1>
+            <h1 className="text-2xl font-semibold text-slate-900">Jupi D2C</h1>
             <p className="mt-1 text-sm text-slate-500">
               本地控制面板 · 配置保存到 <code className="rounded bg-slate-200 px-1 py-0.5">config.yml</code>，重启后生效。
             </p>
@@ -238,15 +234,6 @@ function Panel({ token, onLogout }: { token: string; onLogout: () => void }) {
                 max={65535}
                 value={form.port}
                 onChange={(e) => update('port', e.target.value)}
-                className={inputClass}
-              />
-            </Field>
-
-            <Field label="公开访问基址 (PUBLIC_BASE_URL)" hint="生成的文件 URL 前缀。">
-              <input
-                type="text"
-                value={form.publicBaseURL}
-                onChange={(e) => update('publicBaseURL', e.target.value)}
                 className={inputClass}
               />
             </Field>

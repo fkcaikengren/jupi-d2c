@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"d2c-manager/internal/config"
-	"d2c-manager/internal/daemon"
+	"jupi-d2c/internal/config"
+	"jupi-d2c/internal/daemon"
 
 	"github.com/spf13/cobra"
 )

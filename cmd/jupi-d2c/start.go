@@ -7,14 +7,14 @@ import (
 	"syscall"
 	"time"
 
-	"d2c-manager/internal/config"
-	"d2c-manager/internal/daemon"
+	"jupi-d2c/internal/config"
+	"jupi-d2c/internal/daemon"
 
 	"github.com/spf13/cobra"
 )
 
 // defaultLogFile 是后台进程 stdout/stderr 的落盘位置。
-const defaultLogFile = "./d2c-manager.log"
+const defaultLogFile = "./jupi-d2c.log"
 
 var logFile string // --log-file
 

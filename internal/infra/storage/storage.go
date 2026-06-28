@@ -22,11 +22,11 @@ type SavedFile struct {
 
 // SaveOptions 是一次写盘的全部入参。
 type SaveOptions struct {
-	Bytes         []byte
-	OriginalName  string
-	ContentType   string
-	UploadDir     string
-	PublicBaseURL string
+	Bytes        []byte
+	OriginalName string
+	ContentType  string
+	UploadDir    string
+	BaseURL      string
 	// Tag 为本次生成 AST 的归档标签，非空时按其建子目录归档（见 sanitizeTag）。
 	Tag string
 }
@@ -110,9 +110,9 @@ func SaveBytes(opts SaveOptions) (SavedFile, error) {
 		contentType = "application/octet-stream"
 	}
 
-	url := fmt.Sprintf("%s/uploads/%s", opts.PublicBaseURL, filename)
+	url := fmt.Sprintf("%s/uploads/%s", opts.BaseURL, filename)
 	if tag != "" {
-		url = fmt.Sprintf("%s/uploads/%s/%s", opts.PublicBaseURL, tag, filename)
+		url = fmt.Sprintf("%s/uploads/%s/%s", opts.BaseURL, tag, filename)
 	}
 
 	return SavedFile{

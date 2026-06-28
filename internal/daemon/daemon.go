@@ -9,10 +9,10 @@ import (
 	"os"
 	"time"
 
-	"d2c-manager/internal/api"
-	"d2c-manager/internal/config"
-	"d2c-manager/internal/infra/queue"
-	"d2c-manager/internal/infra/storage"
+	"jupi-d2c/internal/api"
+	"jupi-d2c/internal/config"
+	"jupi-d2c/internal/infra/queue"
+	"jupi-d2c/internal/infra/storage"
 )
 
 const shutdownTimeout = 30 * time.Second
@@ -55,9 +55,8 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("[d2c-manager] listening on %s", d.ln.Addr())
-		log.Printf("[d2c-manager] upload dir: %s", d.cfg.UploadDir)
-		log.Printf("[d2c-manager] public base: %s", d.cfg.PublicBaseURL)
+		log.Printf("[jupi-d2c] listening on %s", d.ln.Addr())
+		log.Printf("[jupi-d2c] upload dir: %s", d.cfg.UploadDir)
 		if err := d.server.Serve(d.ln); err != nil && err != http.ErrServerClosed {
 			errCh <- err
 		}
@@ -68,7 +67,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 		d.gracefulStop()
 		return err
 	case <-ctx.Done():
-		log.Printf("[d2c-manager] shutdown signal received")
+		log.Printf("[jupi-d2c] shutdown signal received")
 		return d.gracefulStop()
 	}
 }
@@ -83,12 +82,12 @@ func (d *Daemon) gracefulStop() error {
 	defer cancel()
 
 	if err := d.server.Shutdown(shutdownCtx); err != nil {
-		log.Printf("[d2c-manager] server shutdown error: %v", err)
+		log.Printf("[jupi-d2c] server shutdown error: %v", err)
 	}
 	if err := d.pool.Shutdown(shutdownCtx); err != nil {
-		log.Printf("[d2c-manager] pool shutdown error: %v", err)
+		log.Printf("[jupi-d2c] pool shutdown error: %v", err)
 		return err
 	}
-	log.Printf("[d2c-manager] stopped cleanly")
+	log.Printf("[jupi-d2c] stopped cleanly")
 	return nil
 }

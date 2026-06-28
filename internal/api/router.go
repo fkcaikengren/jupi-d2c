@@ -17,11 +17,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"d2c-manager/internal/api/handlers"
-	"d2c-manager/internal/api/middleware"
-	"d2c-manager/internal/api/webui"
-	"d2c-manager/internal/config"
-	"d2c-manager/internal/infra/queue"
+	"jupi-d2c/internal/api/handlers"
+	"jupi-d2c/internal/api/middleware"
+	"jupi-d2c/internal/api/webui"
+	"jupi-d2c/internal/config"
+	"jupi-d2c/internal/infra/queue"
 
 	"github.com/gin-gonic/gin"
 )

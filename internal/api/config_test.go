@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"d2c-manager/internal/config"
+	"jupi-d2c/internal/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

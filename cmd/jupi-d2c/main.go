@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"d2c-manager/internal/config"
-	"d2c-manager/internal/daemon"
+	"jupi-d2c/internal/config"
+	"jupi-d2c/internal/daemon"
 
 	"github.com/spf13/cobra"
 )
@@ -31,7 +31,7 @@ func main() {
 // start/stop/status 则以守护进程方式控制后台实例。
 func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:           "d2c-manager",
+		Use:           "jupi-d2c",
 		Short:         "D2C 上传管理服务",
 		Long:          "D2C 上传管理服务。\n\n直接运行（无子命令）将在前台启动服务并打印 HTTP 活动；\nstart/stop/status 用于以守护进程方式控制后台实例。",
 		Args:          cobra.NoArgs,
@@ -45,7 +45,7 @@ func newRootCmd() *cobra.Command {
 	root.PersistentFlags().StringVar(&pidFile, "pid-file", daemon.DefaultPIDFile,
 		"PID 文件路径")
 	root.PersistentFlags().StringVar(&configFile, "config", "",
-		"配置文件路径（默认 ./config.yml，否则 ~/.jupi_d2c/config.yml）")
+		"配置文件路径（默认 ./config.yml，否则 ~/.jupi-d2c/config.yml）")
 
 	root.AddCommand(newStartCmd(), newStopCmd(), newStatusCmd())
 	return root

@@ -17,19 +17,19 @@ import (
 //go:embed defaults.yml
 var defaultsYAML []byte
 
-// ConfigDir 返回 CLI 工具的全局配置目录（~/.jupi_d2c）。
+// ConfigDir 返回 CLI 工具的全局配置目录（~/.jupi-d2c）。
 func ConfigDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		// 极端回退：用当前目录
 		return "."
 	}
-	return filepath.Join(home, ".jupi_d2c")
+	return filepath.Join(home, ".jupi-d2c")
 }
 
 // ResolvePath 按优先级解析配置文件路径，显式优于约定：
 //
-//	显式 --config flag > ./config.yml（存在时）> ~/.jupi_d2c/config.yml
+//	显式 --config flag > ./config.yml（存在时）> ~/.jupi-d2c/config.yml
 //
 // flagPath 为空表示未提供该 flag。后两级是“开发用本地文件 / 生产用 home 文件”的默认约定。
 func ResolvePath(flagPath string) string {
@@ -46,13 +46,12 @@ func ResolvePath(flagPath string) string {
 // AppConfig 是启动期解析并校验后的配置。
 // 配置的唯一来源是 config.yml，无环境变量 / .env 兜底。
 type AppConfig struct {
-	Port          int
-	Token         string
-	UploadDir     string
-	PublicBaseURL string
-	MaxFileSize   int64
-	WorkerCount   int
-	QueueSize     int
+	Port        int
+	Token       string
+	UploadDir   string
+	MaxFileSize int64
+	WorkerCount int
+	QueueSize   int
 }
 
 // LoadFromPath 纯读取并校验 config.yml——文件不存在时直接返回错误，绝不写盘。
@@ -77,13 +76,12 @@ func LoadFromPath(path string) (AppConfig, error) {
 	}
 
 	cfg := AppConfig{
-		Port:          y.Port,
-		Token:         y.Token,
-		UploadDir:     resolveUploadDir(y.UploadDir, path),
-		PublicBaseURL: strings.TrimRight(y.PublicBaseURL, "/"),
-		MaxFileSize:   y.MaxFileSize,
-		WorkerCount:   y.WorkerCount,
-		QueueSize:     y.QueueSize,
+		Port:        y.Port,
+		Token:       y.Token,
+		UploadDir:   resolveUploadDir(y.UploadDir, path),
+		MaxFileSize: y.MaxFileSize,
+		WorkerCount: y.WorkerCount,
+		QueueSize:   y.QueueSize,
 	}
 	if err := Validate(cfg); err != nil {
 		return AppConfig{}, err
@@ -182,13 +180,12 @@ func Validate(c AppConfig) error {
 
 // yamlConfig 是 config.yml 的落盘形状（snake_case，与配置文件 key 一致）。
 type yamlConfig struct {
-	Port          int    `yaml:"port"`
-	Token         string `yaml:"token"`
-	UploadDir     string `yaml:"upload_dir"`
-	PublicBaseURL string `yaml:"public_base_url"`
-	MaxFileSize   int64  `yaml:"max_file_size"`
-	WorkerCount   int    `yaml:"worker_count"`
-	QueueSize     int    `yaml:"queue_size"`
+	Port        int    `yaml:"port"`
+	Token       string `yaml:"token"`
+	UploadDir   string `yaml:"upload_dir"`
+	MaxFileSize int64  `yaml:"max_file_size"`
+	WorkerCount int    `yaml:"worker_count"`
+	QueueSize   int    `yaml:"queue_size"`
 }
 
 // Save 校验并原子写入 config.yml。
@@ -197,13 +194,12 @@ func Save(path string, c AppConfig) error {
 		return err
 	}
 	return writeYAMLAtomic(path, yamlConfig{
-		Port:          c.Port,
-		Token:         c.Token,
-		UploadDir:     c.UploadDir,
-		PublicBaseURL: c.PublicBaseURL,
-		MaxFileSize:   c.MaxFileSize,
-		WorkerCount:   c.WorkerCount,
-		QueueSize:     c.QueueSize,
+		Port:        c.Port,
+		Token:       c.Token,
+		UploadDir:   c.UploadDir,
+		MaxFileSize: c.MaxFileSize,
+		WorkerCount: c.WorkerCount,
+		QueueSize:   c.QueueSize,
 	})
 }
 
