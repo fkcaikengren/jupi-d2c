@@ -1,0 +1,4 @@
+/uploads/
+.env
+/d2c-manager
+*.out
