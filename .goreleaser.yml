@@ -1,0 +1,91 @@
+# GoReleaser v2 配置：打 tag（vX.Y.Z）后由 CI 触发，
+# 交叉编译多平台二进制 → 生成 GitHub Release → 自动更新 Homebrew tap。
+# 本地校验：goreleaser check / goreleaser release --snapshot --clean
+version: 2
+
+project_name: jupi-d2c
+
+# 构建前先产出内嵌前端（dist 被 .gitignore 忽略，CI 全新检出需重新构建），
+# 再整理依赖。CI 已预装 node/pnpm/go。
+before:
+  hooks:
+    - sh -c "cd web && pnpm install --frozen-lockfile && pnpm build"
+    - go mod tidy
+
+builds:
+  - id: jupi-d2c
+    main: ./cmd/jupi-d2c
+    binary: jupi-d2c
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .CommitDate }}
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - config.example.yml
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+
+brews:
+  - name: jupi-d2c
+    ids:
+      - default
+    repository:
+      owner: fkcaikengren
+      name: homebrew-jupi-d2c
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    commit_author:
+      name: fkcaikengren
+      email: fkcaikengren@163.com
+    commit_msg_template: "chore: brew formula update for {{ .ProjectName }} {{ .Tag }}"
+    homepage: "https://github.com/fkcaikengren/jupi-d2c"
+    description: "D2C 插件图片上传管理服务（daemon + 内嵌 Web UI）"
+    license: "MIT"
+    # 预发布 tag（v1.0.0-rc1 等）不更新 tap，避免污染稳定版。
+    skip_upload: auto
+    install: |
+      bin.install "jupi-d2c"
+    test: |
+      system "#{bin}/jupi-d2c", "--version"
+
+release:
+  github:
+    owner: fkcaikengren
+    name: jupi-d2c
+  draft: false
+  prerelease: auto

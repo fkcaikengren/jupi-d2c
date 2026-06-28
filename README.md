@@ -2,6 +2,47 @@
 
 D2C 插件图片上传后端的 Go 版本（daemon）。从 Node.js (Hono) 版 `storage_service` 迁移而来，**HTTP 接口保持不变**。
 
+## 安装
+
+### Homebrew（推荐）
+
+```bash
+brew tap fkcaikengren/jupi-d2c
+brew install jupi-d2c
+```
+
+后续升级：
+
+```bash
+brew upgrade jupi-d2c
+```
+
+> 发布的二进制已内嵌前端 Web UI，安装后即可直接 `jupi-d2c` 运行。
+
+### 从源码构建
+
+需要 Go（见 `go.mod`）与 Node 22 / pnpm（构建内嵌前端）：
+
+```bash
+cd web && pnpm install && pnpm build && cd ..
+go build -o jupi-d2c ./cmd/jupi-d2c
+```
+
+查看版本：`jupi-d2c --version`。
+
+## 发布（维护者）
+
+发布完全由 [GoReleaser](https://goreleaser.com) + GitHub Actions 驱动：推送一个 `vX.Y.Z` tag 即触发 `.github/workflows/release.yml`，自动构建前端、交叉编译 macOS/Linux（amd64 + arm64）二进制、创建 GitHub Release，并把更新后的 formula 提交到 [`fkcaikengren/homebrew-jupi-d2c`](https://github.com/fkcaikengren/homebrew-jupi-d2c)。
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+**前置条件**：在 `jupi-d2c` 仓库 Settings → Secrets 添加 `HOMEBREW_TAP_GITHUB_TOKEN`——一个对 `homebrew-jupi-d2c` 有写权限的 GitHub PAT（仅需 `repo`/`contents` 权限）。默认 `GITHUB_TOKEN` 仅能写本仓库，无法跨仓库推送 formula。
+
+本地校验配置：`goreleaser check`；本地试跑（不发布）：`goreleaser release --snapshot --clean`。
+
 ## 架构
 
 代码按职责分三层放：

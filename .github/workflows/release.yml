@@ -1,0 +1,49 @@
+name: release
+
+# 推送 vX.Y.Z tag 时发布：构建前端 → 交叉编译 → 创建 Release → 更新 Homebrew tap。
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # 创建 release、上传产物
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # GoReleaser 需要完整历史与 tag 生成 changelog
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          # 默认 token 用于本仓库的 Release。
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 跨仓库推送 Formula 到 homebrew-jupi-d2c，需自备 PAT（repo 权限）。
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}

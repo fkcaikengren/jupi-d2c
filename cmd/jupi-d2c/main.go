@@ -19,6 +19,14 @@ var (
 	configFile string // --config，显式指定配置文件路径（优先于默认搜索）
 )
 
+// 版本信息，发布时由 GoReleaser 通过 -ldflags -X 注入；
+// 源码构建（go build / go run）时保持下列默认占位值。
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	if err := newRootCmd().Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "错误:", err)
@@ -34,6 +42,7 @@ func newRootCmd() *cobra.Command {
 		Use:           "jupi-d2c",
 		Short:         "D2C 上传管理服务",
 		Long:          "D2C 上传管理服务。\n\n直接运行（无子命令）将在前台启动服务并打印 HTTP 活动；\nstart/stop/status 用于以守护进程方式控制后台实例。",
+		Version:       fmt.Sprintf("%s (commit %s, built %s)", version, commit, date),
 		Args:          cobra.NoArgs,
 		SilenceUsage:  true, // 运行期错误不再打印 usage，避免噪音
 		SilenceErrors: true, // 错误由 main 统一打印，避免重复
@@ -41,6 +50,7 @@ func newRootCmd() *cobra.Command {
 			return runForeground()
 		},
 	}
+	root.SetVersionTemplate("jupi-d2c {{.Version}}\n")
 
 	root.PersistentFlags().StringVar(&pidFile, "pid-file", daemon.DefaultPIDFile,
 		"PID 文件路径")
