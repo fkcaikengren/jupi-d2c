@@ -18,6 +18,7 @@ D2C 插件图片上传后端的 Go 版本（daemon）。从 Node.js (Hono) 版 `
   - `infra/storage` — 写盘逻辑（唯一直接落盘处，换 S3/OSS/R2 只改这里）。
   - `infra/database` — 占位；未来扩展数据库服务时加在这里。
 - `internal/daemon` — 组合「对外 server + 面板 server + 池」，管理启动/关闭顺序。
+- `web/` — 前端子项目（React 18 + Tailwind v4 + Vite，pnpm + Node 22）。
 
 ### 网关层：两个监听器
 
@@ -40,12 +41,30 @@ D2C 插件图片上传后端的 Go 版本（daemon）。从 Node.js (Hono) 版 `
 ```bash
 cp .env.example .env   # 把 STORAGE_TOKEN 改成长随机串
 
+# 先构建前端（产物内嵌进二进制；未构建时管理页显示占位提示）
+cd web && pnpm install && pnpm build && cd ..
+
 go run ./cmd/d2c-manager
 # 或编译为单一二进制
 go build -o d2c-manager ./cmd/d2c-manager && ./d2c-manager
 ```
 
 启动后：对外 API 在 `http://localhost:3000`，本地控制面板在 `http://localhost:3001`。
+
+> `go build` 不依赖前端产物即可通过（`internal/api/ui/webui/dist/.gitkeep` 作为 `go:embed` 锚点）；只有跑过 `pnpm build` 才会内嵌真实 UI。
+
+## 控制面板（Web UI）
+
+`web/` 是独立前端子项目（React 18 + Tailwind CSS v4 + Vite，Node 22 / pnpm）。
+
+```bash
+cd web
+pnpm install      # 依赖 esbuild 构建脚本已在 pnpm-workspace.yaml 放行
+pnpm dev          # 开发服务器，/api 代理到 127.0.0.1:3001
+pnpm build        # 产物输出到 ../internal/api/ui/webui/dist，供 go:embed 打包
+```
+
+首次访问 UI 时，浏览器会要求输入 `STORAGE_TOKEN`（只存在 localStorage，不会上传）；之后所有 `/api/config` 请求自动带 `Authorization: Bearer <token>`。在 UI 上可查看/修改全部配置并保存到 `config.yml`。**修改在下次重启 daemon 后生效**——保存后若与运行中的实例不一致，页面会提示「需重启」。`STORAGE_TOKEN` 只写不回显；`ADMIN_PORT` 只读（避免把自己锁在外）。右上角「更换 token」可清除 localStorage 回到登录页。
 
 ## API
 

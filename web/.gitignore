@@ -1,0 +1,5 @@
+node_modules
+*.local
+.DS_Store
+*.log
+# 构建产物输出到 ../internal/api/admin/webui/dist（由 Go 内嵌），不在本目录。
