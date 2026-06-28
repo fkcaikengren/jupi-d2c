@@ -32,7 +32,7 @@ go build -o jupi-d2c ./cmd/jupi-d2c
 
 ## 发布（维护者）
 
-发布完全由 [GoReleaser](https://goreleaser.com) + GitHub Actions 驱动：推送一个 `vX.Y.Z` tag 即触发 `.github/workflows/release.yml`，自动构建前端、交叉编译 macOS/Linux（amd64 + arm64）二进制、创建 GitHub Release，并把更新后的 formula 提交到 [`fkcaikengren/homebrew-jupi-d2c`](https://github.com/fkcaikengren/homebrew-jupi-d2c)。
+发布完全由 [GoReleaser](https://goreleaser.com) + GitHub Actions 驱动：推送一个 `vX.Y.Z` tag 即触发 `.github/workflows/release.yml`，自动构建前端、交叉编译 macOS/Linux（amd64 + arm64）二进制、创建 GitHub Release，并把更新后的 Homebrew Cask 提交到 [`fkcaikengren/homebrew-jupi-d2c`](https://github.com/fkcaikengren/homebrew-jupi-d2c)。
 
 ```bash
 git tag v0.1.0

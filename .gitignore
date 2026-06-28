@@ -5,6 +5,9 @@
 *.out
 .reasonix/
 
+# GoReleaser 构建产物
+/dist/
+
 # macOS 资源管理器残留
 .DS_Store
 

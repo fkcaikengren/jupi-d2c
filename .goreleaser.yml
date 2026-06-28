@@ -59,29 +59,32 @@ changelog:
       - "Merge pull request"
       - "Merge branch"
 
-brews:
+# Homebrew Cask（v2.16 起发布预编译二进制的推荐方式，formula 已废弃）。
+# 生成的 cask 同时含 macOS 与 Linux 块；Linux 用户也可直接下载 Release 中的 tar.gz。
+homebrew_casks:
   - name: jupi-d2c
-    ids:
-      - default
+    binaries:
+      - jupi-d2c
     repository:
       owner: fkcaikengren
       name: homebrew-jupi-d2c
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    directory: Formula
     commit_author:
       name: fkcaikengren
       email: fkcaikengren@163.com
-    commit_msg_template: "chore: brew formula update for {{ .ProjectName }} {{ .Tag }}"
+    commit_msg_template: "chore: brew cask update for {{ .ProjectName }} {{ .Tag }}"
     homepage: "https://github.com/fkcaikengren/jupi-d2c"
     description: "D2C 插件图片上传管理服务（daemon + 内嵌 Web UI）"
-    license: "MIT"
     # 预发布 tag（v1.0.0-rc1 等）不更新 tap，避免污染稳定版。
     skip_upload: auto
-    install: |
-      bin.install "jupi-d2c"
-    test: |
-      system "#{bin}/jupi-d2c", "--version"
+    # 二进制未签名/公证，去掉隔离属性，避免 Gatekeeper 拦截。
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/jupi-d2c"]
+          end
 
 release:
   github:
