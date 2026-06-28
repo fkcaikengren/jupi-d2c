@@ -9,84 +9,138 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// missingPath 返回一个临时目录下尚不存在的 config.yml 路径。
-func missingPath(t *testing.T) string {
+// validCfg 返回一份可通过 Validate 的配置，UploadDir 用绝对路径避免被解析改写。
+func validCfg(t *testing.T) AppConfig {
 	t.Helper()
-	return filepath.Join(t.TempDir(), "config.yml")
+	return AppConfig{
+		Port:          8080,
+		Token:         "rt-token",
+		UploadDir:     t.TempDir(),
+		PublicBaseURL: "https://cdn.example.com",
+		MaxFileSize:   5 * 1024 * 1024,
+		WorkerCount:   3,
+		QueueSize:     32,
+	}
 }
 
-func TestLoad_RequiresToken(t *testing.T) {
-	os.Clearenv()
-	_, err := LoadFromPath(missingPath(t))
+func TestLoadFromPath_MissingErrsWithoutWriting(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yml")
+	_, err := LoadFromPath(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "STORAGE_TOKEN")
+	assert.Contains(t, err.Error(), "不存在")
+	assert.NoFileExists(t, path, "读取缺失配置绝不应创建文件")
 }
 
-func TestLoad_Defaults(t *testing.T) {
-	os.Clearenv()
-	os.Setenv("STORAGE_TOKEN", "secret")
-	cfg, err := LoadFromPath(missingPath(t))
+func TestLoadFromPath_RoundTrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yml")
+	want := validCfg(t)
+	require.NoError(t, Save(path, want))
+
+	got, err := LoadFromPath(path)
 	require.NoError(t, err)
-	assert.Equal(t, 3000, cfg.Port)
-	assert.Equal(t, "secret", cfg.Token)
-	assert.Equal(t, "./uploads", cfg.UploadDir)
-	assert.Equal(t, "http://localhost:3000", cfg.PublicBaseURL)
-	assert.Equal(t, int64(10*1024*1024), cfg.MaxFileSize)
-	assert.Equal(t, 4, cfg.WorkerCount)
-	assert.Equal(t, 64, cfg.QueueSize)
+	assert.Equal(t, want, got)
 }
 
-func TestLoad_TrimsTrailingSlash(t *testing.T) {
-	os.Clearenv()
-	os.Setenv("STORAGE_TOKEN", "secret")
-	os.Setenv("PUBLIC_BASE_URL", "https://cdn.example.com///")
-	cfg, err := LoadFromPath(missingPath(t))
+func TestLoadFromPath_TrimsTrailingSlash(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yml")
+	cfg := validCfg(t)
+	cfg.PublicBaseURL = "https://cdn.example.com///"
+	require.NoError(t, Save(path, cfg))
+
+	got, err := LoadFromPath(path)
 	require.NoError(t, err)
-	assert.Equal(t, "https://cdn.example.com", cfg.PublicBaseURL)
+	assert.Equal(t, "https://cdn.example.com", got.PublicBaseURL)
 }
 
-func TestLoad_RejectsBadNumber(t *testing.T) {
-	os.Clearenv()
-	os.Setenv("STORAGE_TOKEN", "secret")
-	os.Setenv("MAX_FILE_SIZE", "-5")
-	_, err := LoadFromPath(missingPath(t))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "MAX_FILE_SIZE")
+func TestLoadFromPath_RejectsUnknownKey(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yml")
+	raw := "port: 3000\ntoken: secret\nupload_dir: /tmp/up\n" +
+		"public_base_url: http://localhost\nmax_file_size: 1024\n" +
+		"worker_count: 1\nqueue_size: 1\nbogus_key: 1\n"
+	require.NoError(t, os.WriteFile(path, []byte(raw), 0o600))
+
+	_, err := LoadFromPath(path)
+	require.Error(t, err, "拼错/多余的 key 应被 KnownFields 拒绝")
 }
 
-// config.yml 的值覆盖环境变量（yml 是最终来源）。
-func TestLoad_Precedence_ConfigOverEnv(t *testing.T) {
-	os.Clearenv()
-	os.Setenv("STORAGE_TOKEN", "env-token")
-	os.Setenv("PORT", "3000")
+func TestLoadFromPath_ResolvesRelativeUploadDir(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+	raw := "port: 3000\ntoken: secret\nupload_dir: ./uploads\n" +
+		"public_base_url: http://localhost\nmax_file_size: 1024\n" +
+		"worker_count: 1\nqueue_size: 1\n"
+	require.NoError(t, os.WriteFile(path, []byte(raw), 0o600))
 
-	path := missingPath(t)
-	require.NoError(t, Save(path, AppConfig{
-		Port: 4000, Token: "file-token",
-		UploadDir: "./uploads", PublicBaseURL: "http://localhost:4000",
-		MaxFileSize: 2048, WorkerCount: 2, QueueSize: 8,
-	}))
+	got, err := LoadFromPath(path)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(dir, "uploads"), got.UploadDir,
+		"相对 upload_dir 应锚定到配置文件所在目录")
+}
+
+func TestBootstrap_GeneratesTokenWithSecurePerms(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yml")
+	require.NoError(t, Bootstrap(path))
+
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "token 文件应仅属主可读写")
 
 	cfg, err := LoadFromPath(path)
 	require.NoError(t, err)
-	assert.Equal(t, 4000, cfg.Port, "yml 应覆盖 env PORT")
-	assert.Equal(t, "file-token", cfg.Token, "yml 应覆盖 env STORAGE_TOKEN")
+	assert.Len(t, cfg.Token, 64, "随机 token 应为 64 位十六进制")
 }
 
-// 没有 yml key 时，环境变量覆盖硬编码默认值。
-func TestLoad_Precedence_EnvOverDefault(t *testing.T) {
-	os.Clearenv()
-	os.Setenv("STORAGE_TOKEN", "secret")
-	os.Setenv("WORKER_COUNT", "9")
-	cfg, err := LoadFromPath(missingPath(t))
+func TestBootstrap_TokensAreUnique(t *testing.T) {
+	a := filepath.Join(t.TempDir(), "config.yml")
+	b := filepath.Join(t.TempDir(), "config.yml")
+	require.NoError(t, Bootstrap(a))
+	require.NoError(t, Bootstrap(b))
+
+	ca, err := LoadFromPath(a)
 	require.NoError(t, err)
-	assert.Equal(t, 9, cfg.WorkerCount)
+	cb, err := LoadFromPath(b)
+	require.NoError(t, err)
+	assert.NotEqual(t, ca.Token, cb.Token)
+}
+
+func TestEnsureConfig_CreatesWhenMissing(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yml")
+	created, err := EnsureConfig(path)
+	require.NoError(t, err)
+	assert.True(t, created)
+	assert.FileExists(t, path)
+}
+
+func TestEnsureConfig_NoOpWhenExists(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yml")
+	require.NoError(t, Save(path, validCfg(t)))
+	before, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	created, err := EnsureConfig(path)
+	require.NoError(t, err)
+	assert.False(t, created, "已存在的配置不应被覆盖")
+
+	after, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, before, after, "EnsureConfig 不应改动既有配置")
+}
+
+func TestResolvePath_Precedence(t *testing.T) {
+	t.Run("flag 最优先", func(t *testing.T) {
+		assert.Equal(t, "/from/flag.yml", ResolvePath("/from/flag.yml"))
+	})
+
+	t.Run("无 flag 时回退到 home 默认", func(t *testing.T) {
+		// 测试 CWD 在 internal/config，无 ./config.yml，应落到 ConfigDir。
+		assert.Equal(t, filepath.Join(ConfigDir(), "config.yml"), ResolvePath(""))
+	})
 }
 
 func TestValidate_Errors(t *testing.T) {
 	base := AppConfig{
 		Port: 3000, Token: "secret",
-		UploadDir: "./uploads", PublicBaseURL: "http://localhost",
+		UploadDir: "/tmp/up", PublicBaseURL: "http://localhost",
 		MaxFileSize: 1024, WorkerCount: 1, QueueSize: 1,
 	}
 	require.NoError(t, Validate(base))
@@ -108,31 +162,10 @@ func TestValidate_Errors(t *testing.T) {
 	}
 }
 
-func TestSave_RoundTrip(t *testing.T) {
-	os.Clearenv()
-	path := missingPath(t)
-	want := AppConfig{
-		Port: 8080, Token: "rt-token",
-		UploadDir: "./data", PublicBaseURL: "https://cdn.example.com",
-		MaxFileSize: 5 * 1024 * 1024, WorkerCount: 3, QueueSize: 32,
-	}
-	require.NoError(t, Save(path, want))
-	assert.FileExists(t, path)
-
-	got, err := LoadFromPath(path)
-	require.NoError(t, err)
-	assert.Equal(t, want, got)
-}
-
 func TestSave_NoLeftoverTempFiles(t *testing.T) {
-	os.Clearenv()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")
-	require.NoError(t, Save(path, AppConfig{
-		Port: 3000, Token: "secret",
-		UploadDir: "./uploads", PublicBaseURL: "http://localhost",
-		MaxFileSize: 1024, WorkerCount: 1, QueueSize: 1,
-	}))
+	require.NoError(t, Save(path, validCfg(t)))
 
 	entries, err := os.ReadDir(dir)
 	require.NoError(t, err)
@@ -140,8 +173,7 @@ func TestSave_NoLeftoverTempFiles(t *testing.T) {
 }
 
 func TestSave_RejectsInvalid(t *testing.T) {
-	os.Clearenv()
-	path := missingPath(t)
+	path := filepath.Join(t.TempDir(), "config.yml")
 	err := Save(path, AppConfig{Port: 0}) // 非法
 	require.Error(t, err)
 	assert.NoFileExists(t, path, "校验失败不应写文件")

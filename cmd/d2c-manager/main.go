@@ -15,8 +15,8 @@ import (
 
 // 全局 flag，被各子命令共享。
 var (
-	configFile string // --config，传给 config.ResolvePath
 	pidFile    string // --pid-file，daemon 进程的 PID 落盘位置
+	configFile string // --config，显式指定配置文件路径（优先于默认搜索）
 )
 
 func main() {
@@ -42,10 +42,10 @@ func newRootCmd() *cobra.Command {
 		},
 	}
 
-	root.PersistentFlags().StringVar(&configFile, "config", "",
-		"配置文件路径 (默认: 环境变量 CONFIG_FILE 或 ./config.yml)")
 	root.PersistentFlags().StringVar(&pidFile, "pid-file", daemon.DefaultPIDFile,
 		"PID 文件路径")
+	root.PersistentFlags().StringVar(&configFile, "config", "",
+		"配置文件路径（默认 ./config.yml，否则 ~/.jupi_d2c/config.yml）")
 
 	root.AddCommand(newStartCmd(), newStopCmd(), newStatusCmd())
 	return root
@@ -55,6 +55,9 @@ func newRootCmd() *cobra.Command {
 // 这是裸命令的行为，同时也是 start 在后台拉起的目标。
 func runForeground() error {
 	path := config.ResolvePath(configFile)
+	if _, err := config.EnsureConfig(path); err != nil {
+		return fmt.Errorf("准备配置失败: %w", err)
+	}
 	cfg, err := config.LoadFromPath(path)
 	if err != nil {
 		return fmt.Errorf("加载配置失败: %w", err)

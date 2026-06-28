@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	"d2c-manager/internal/config"
 	"d2c-manager/internal/daemon"
 
 	"github.com/spf13/cobra"
@@ -30,6 +31,13 @@ func newStartCmd() *cobra.Command {
 				return fmt.Errorf("服务已在运行 (pid %d)", pid)
 			}
 
+			// 在父进程里确保配置就绪：首次运行生成的 token 打到本终端，
+			// 而不是被重定向进日志文件后让用户找不到。
+			cfgPath := config.ResolvePath(configFile)
+			if _, err := config.EnsureConfig(cfgPath); err != nil {
+				return fmt.Errorf("准备配置失败: %w", err)
+			}
+
 			// 把后台进程的输出重定向到日志文件。
 			out, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 			if err != nil {
@@ -37,17 +45,20 @@ func newStartCmd() *cobra.Command {
 			}
 			defer out.Close()
 
-			// 后台拉起裸命令（即前台运行模式），透传当前的 --config。
-			var args []string
-			if configFile != "" {
-				args = append(args, "--config", configFile)
-			}
+			// 后台拉起裸命令（即前台运行模式）。
 			self, err := os.Executable()
 			if err != nil {
 				return fmt.Errorf("定位可执行文件失败: %w", err)
 			}
 
-			child := exec.Command(self, args...)
+			// 显式 --config 不会随 CWD/环境继承，必须透传给后台子进程，
+			// 否则它会按默认搜索路径解析出另一份配置。
+			var childArgs []string
+			if configFile != "" {
+				childArgs = append(childArgs, "--config", cfgPath)
+			}
+
+			child := exec.Command(self, childArgs...)
 			child.Stdout = out
 			child.Stderr = out
 			// Setsid 让子进程脱离当前终端会话，成为独立的后台进程。

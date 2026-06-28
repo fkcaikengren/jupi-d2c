@@ -1,23 +1,50 @@
 package config
 
 import (
+	"bytes"
+	"crypto/rand"
+	_ "embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
-	"github.com/joho/godotenv"
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
-// defaultConfigPath 是未显式指定 CONFIG_FILE 时的配置文件路径（cwd）。
-const defaultConfigPath = "./config.yml"
+//go:embed defaults.yml
+var defaultsYAML []byte
+
+// ConfigDir 返回 CLI 工具的全局配置目录（~/.jupi_d2c）。
+func ConfigDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		// 极端回退：用当前目录
+		return "."
+	}
+	return filepath.Join(home, ".jupi_d2c")
+}
+
+// ResolvePath 按优先级解析配置文件路径，显式优于约定：
+//
+//	显式 --config flag > ./config.yml（存在时）> ~/.jupi_d2c/config.yml
+//
+// flagPath 为空表示未提供该 flag。后两级是“开发用本地文件 / 生产用 home 文件”的默认约定。
+func ResolvePath(flagPath string) string {
+	if strings.TrimSpace(flagPath) != "" {
+		return flagPath
+	}
+	const local = "./config.yml"
+	if _, err := os.Stat(local); err == nil {
+		return local
+	}
+	return filepath.Join(ConfigDir(), "config.yml")
+}
 
 // AppConfig 是启动期解析并校验后的配置。
-// 解析优先级：config.yml > 环境变量(/.env) > 硬编码默认值。
+// 配置的唯一来源是 config.yml，无环境变量 / .env 兜底。
 type AppConfig struct {
 	Port          int
 	Token         string
@@ -28,94 +55,35 @@ type AppConfig struct {
 	QueueSize     int
 }
 
-// envSeeder 把环境变量读成 viper 的“默认值”。环境变量只作为 bootstrap 默认，
-// 优先级低于 config.yml。present-but-invalid 的数字仍是硬错误（记录首个错误）。
-type envSeeder struct {
-	err error
-}
-
-func (s *envSeeder) str(name, fallback string) string {
-	if v := os.Getenv(name); v != "" {
-		return v
-	}
-	return fallback
-}
-
-func (s *envSeeder) int64(name string, fallback int64) int64 {
-	raw := os.Getenv(name)
-	if raw == "" {
-		return fallback
-	}
-	n, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil || n <= 0 {
-		if s.err == nil {
-			s.err = fmt.Errorf("环境变量 %s 不是合法正数: %s", name, raw)
-		}
-		return fallback
-	}
-	return n
-}
-
-// ResolvePath 解析配置文件路径：显式参数 > CONFIG_FILE 环境变量 > 默认 ./config.yml。
-func ResolvePath(explicit string) string {
-	if explicit != "" {
-		return explicit
-	}
-	if p := os.Getenv("CONFIG_FILE"); p != "" {
-		return p
-	}
-	return defaultConfigPath
-}
-
-// Load 解析默认路径（CONFIG_FILE / ./config.yml）的配置，并返回最终路径，
-// 以便 daemon / 面板 API 知道往哪里写回。
-func Load() (AppConfig, string, error) {
-	path := ResolvePath("")
-	cfg, err := LoadFromPath(path)
-	return cfg, path, err
-}
-
-// LoadFromPath 从指定 config.yml 路径解析配置；文件不存在不是错误（首次启动）。
+// LoadFromPath 纯读取并校验 config.yml——文件不存在时直接返回错误，绝不写盘。
+// 生成默认配置是 Bootstrap/EnsureConfig 的显式职责，读取类命令不应有副作用。
+//
+// 相对的 upload_dir 会被锚定到“配置文件所在目录”并归一化为绝对路径，
+// 使上传目录始终落在配置旁边，而非进程恰好所在的工作目录。
 func LoadFromPath(path string) (AppConfig, error) {
-	_ = godotenv.Load() // 仅把 .env 注入进程环境；不存在时静默忽略
-
-	s := &envSeeder{}
-	v := viper.New()
-	v.SetConfigType("yaml")
-	if path != "" {
-		v.SetConfigFile(path)
-	}
-
-	// 用环境变量(或硬编码默认)播种 viper 默认值——这是最低优先级，会被 config.yml 覆盖。
-	v.SetDefault("port", s.int64("PORT", 3000))
-	v.SetDefault("token", s.str("STORAGE_TOKEN", ""))
-	v.SetDefault("upload_dir", s.str("UPLOAD_DIR", "./uploads"))
-	v.SetDefault("public_base_url", s.str("PUBLIC_BASE_URL", "http://localhost:3000"))
-	v.SetDefault("max_file_size", s.int64("MAX_FILE_SIZE", 10*1024*1024))
-	v.SetDefault("worker_count", s.int64("WORKER_COUNT", 4))
-	v.SetDefault("queue_size", s.int64("QUEUE_SIZE", 64))
-	if s.err != nil {
-		return AppConfig{}, s.err
-	}
-
-	if path != "" {
-		if err := v.ReadInConfig(); err != nil {
-			var nf viper.ConfigFileNotFoundError
-			if !errors.As(err, &nf) && !os.IsNotExist(err) {
-				return AppConfig{}, fmt.Errorf("读取配置文件失败: %w", err)
-			}
-			// 文件不存在：使用 env/默认值继续。
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return AppConfig{}, fmt.Errorf("配置文件不存在: %s", path)
 		}
+		return AppConfig{}, fmt.Errorf("读取配置文件失败: %w", err)
+	}
+
+	var y yamlConfig
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true) // 拼错的 key 直接报错，而非被静默忽略后用零值
+	if err := dec.Decode(&y); err != nil {
+		return AppConfig{}, fmt.Errorf("解析配置文件失败: %w", err)
 	}
 
 	cfg := AppConfig{
-		Port:          v.GetInt("port"),
-		Token:         v.GetString("token"),
-		UploadDir:     v.GetString("upload_dir"),
-		PublicBaseURL: strings.TrimRight(v.GetString("public_base_url"), "/"),
-		MaxFileSize:   v.GetInt64("max_file_size"),
-		WorkerCount:   v.GetInt("worker_count"),
-		QueueSize:     v.GetInt("queue_size"),
+		Port:          y.Port,
+		Token:         y.Token,
+		UploadDir:     resolveUploadDir(y.UploadDir, path),
+		PublicBaseURL: strings.TrimRight(y.PublicBaseURL, "/"),
+		MaxFileSize:   y.MaxFileSize,
+		WorkerCount:   y.WorkerCount,
+		QueueSize:     y.QueueSize,
 	}
 	if err := Validate(cfg); err != nil {
 		return AppConfig{}, err
@@ -123,30 +91,96 @@ func LoadFromPath(path string) (AppConfig, error) {
 	return cfg, nil
 }
 
+// resolveUploadDir 把相对的上传目录锚定到配置文件所在目录，并归一化为绝对路径。
+// 空值原样返回，交给 Validate 报“不能为空”。
+func resolveUploadDir(dir, configPath string) string {
+	if dir == "" {
+		return dir
+	}
+	if !filepath.IsAbs(dir) {
+		dir = filepath.Join(filepath.Dir(configPath), dir)
+	}
+	if abs, err := filepath.Abs(dir); err == nil {
+		return abs
+	}
+	return dir
+}
+
+// EnsureConfig 在路径不存在时从嵌入模板生成配置，存在则原样保留。
+// 返回是否为本次新建。仅应由“确实要启动服务”的命令调用。
+func EnsureConfig(path string) (created bool, err error) {
+	switch _, statErr := os.Stat(path); {
+	case statErr == nil:
+		return false, nil
+	case errors.Is(statErr, os.ErrNotExist):
+		if err := Bootstrap(path); err != nil {
+			return false, err
+		}
+		return true, nil
+	default:
+		return false, fmt.Errorf("检查配置文件失败: %w", statErr)
+	}
+}
+
+// tokenPlaceholder 是嵌入模板里待替换的 token 占位行。
+const tokenPlaceholder = `token: ""`
+
+// Bootstrap 把嵌入的 defaults.yml 逐字写出作为 config.yml（保留注释与排版），
+// 仅将 token 占位替换为随机值，原子写入后把 token 打到 stderr 供运营直接复制。
+// 刻意不走“反序列化→结构体→重序列化”，以免丢掉模板里的注释、字段顺序由结构体反客为主。
+func Bootstrap(path string) error {
+	tpl := string(defaultsYAML)
+	if !strings.Contains(tpl, tokenPlaceholder) {
+		return fmt.Errorf("默认模板缺少 token 占位 %q", tokenPlaceholder)
+	}
+	token := randomToken()
+	rendered := strings.Replace(tpl, tokenPlaceholder, fmt.Sprintf("token: %q", token), 1)
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return fmt.Errorf("创建配置目录失败: %w", err)
+	}
+	if err := writeFileAtomic(path, []byte(rendered)); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(os.Stderr, "⚙ 已生成默认配置: %s\n", path)
+	fmt.Fprintf(os.Stderr, "  访问 token: %s\n", token)
+	return nil
+}
+
+// randomToken 生成 64 位十六进制随机 token。
+func randomToken() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		panic(fmt.Sprintf("生成随机 token 失败: %v", err))
+	}
+	return hex.EncodeToString(b)
+}
+
 // Validate 校验配置取值，供 Load 与面板 PUT 共用，确保永不写入非法配置。
 func Validate(c AppConfig) error {
 	if c.Token == "" {
-		return errors.New("缺少 STORAGE_TOKEN / token 配置")
+		return errors.New("缺少 token 配置")
 	}
 	if c.Port < 1 || c.Port > 65535 {
-		return fmt.Errorf("PORT 超出范围 (1-65535): %d", c.Port)
+		return fmt.Errorf("port 超出范围 (1-65535): %d", c.Port)
 	}
 	if c.MaxFileSize <= 0 {
-		return fmt.Errorf("MAX_FILE_SIZE 必须为正数: %d", c.MaxFileSize)
+		return fmt.Errorf("max_file_size 必须为正数: %d", c.MaxFileSize)
 	}
 	if c.WorkerCount < 1 {
-		return fmt.Errorf("WORKER_COUNT 必须 >= 1: %d", c.WorkerCount)
+		return fmt.Errorf("worker_count 必须 >= 1: %d", c.WorkerCount)
 	}
 	if c.QueueSize < 1 {
-		return fmt.Errorf("QUEUE_SIZE 必须 >= 1: %d", c.QueueSize)
+		return fmt.Errorf("queue_size 必须 >= 1: %d", c.QueueSize)
 	}
 	if c.UploadDir == "" {
-		return errors.New("UPLOAD_DIR 不能为空")
+		return errors.New("upload_dir 不能为空")
 	}
 	return nil
 }
 
-// yamlConfig 是 config.yml 的落盘形状（snake_case，与 viper key 一致）。
+// yamlConfig 是 config.yml 的落盘形状（snake_case，与配置文件 key 一致）。
 type yamlConfig struct {
 	Port          int    `yaml:"port"`
 	Token         string `yaml:"token"`
@@ -157,13 +191,12 @@ type yamlConfig struct {
 	QueueSize     int    `yaml:"queue_size"`
 }
 
-// Save 校验并原子写入 config.yml（同目录临时文件 + rename）。token 会被写入，
-// 因为 config.yml 是配置的最终来源。
+// Save 校验并原子写入 config.yml。
 func Save(path string, c AppConfig) error {
 	if err := Validate(c); err != nil {
 		return err
 	}
-	data, err := yaml.Marshal(yamlConfig{
+	return writeYAMLAtomic(path, yamlConfig{
 		Port:          c.Port,
 		Token:         c.Token,
 		UploadDir:     c.UploadDir,
@@ -172,10 +205,20 @@ func Save(path string, c AppConfig) error {
 		WorkerCount:   c.WorkerCount,
 		QueueSize:     c.QueueSize,
 	})
+}
+
+// writeYAMLAtomic 序列化 yamlConfig 后原子写入，供 Save 使用。
+func writeYAMLAtomic(path string, y yamlConfig) error {
+	data, err := yaml.Marshal(y)
 	if err != nil {
 		return fmt.Errorf("序列化配置失败: %w", err)
 	}
+	return writeFileAtomic(path, data)
+}
 
+// writeFileAtomic 原子写入（同目录临时文件 + rename），供 Save 与 Bootstrap 共用。
+// 临时文件由 os.CreateTemp 以 0600 创建，token 落盘即受限于属主可读写。
+func writeFileAtomic(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".config-*.yml.tmp")
 	if err != nil {

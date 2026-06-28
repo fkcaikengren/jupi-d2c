@@ -31,8 +31,8 @@ func newStatusCmd() *cobra.Command {
 			fmt.Fprintf(out, "状态: 运行中 (pid %d)\n", pid)
 
 			// 进程存活不代表 HTTP 已就绪——额外探测 /health 给出健康度。
-			path := config.ResolvePath(configFile)
-			cfg, err := config.LoadFromPath(path)
+			// 这里只读不生成：配置缺失时报“未知”，绝不因一次状态查询而落盘。
+			cfg, err := config.LoadFromPath(config.ResolvePath(configFile))
 			if err != nil {
 				fmt.Fprintf(out, "健康: 未知（加载配置失败: %v）\n", err)
 				return nil
