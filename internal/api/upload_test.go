@@ -1,4 +1,4 @@
-package public
+package api
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"d2c-manager/internal/config"
@@ -18,10 +19,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestServer(t *testing.T) *gin.Engine {
+// newTestServer 起一个完整引擎（含 worker 池与临时 config.yml），供上传/配置测试共用。
+func newTestServer(t *testing.T) (*gin.Engine, string) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	cfg := config.AppConfig{
+		Port:          3000,
 		Token:         "secret",
 		UploadDir:     t.TempDir(),
 		PublicBaseURL: "http://localhost:3000",
@@ -32,7 +35,10 @@ func newTestServer(t *testing.T) *gin.Engine {
 	pool := queue.NewPool(cfg.WorkerCount, cfg.QueueSize, storage.SaveBytes)
 	pool.Start()
 	t.Cleanup(func() { _ = pool.Shutdown(context.Background()) })
-	return NewRouter(cfg, pool)
+
+	path := filepath.Join(t.TempDir(), "config.yml")
+	require.NoError(t, config.Save(path, cfg))
+	return NewRouter(cfg, pool, path), path
 }
 
 type uploadResp struct {
@@ -40,16 +46,16 @@ type uploadResp struct {
 }
 
 func TestHealth(t *testing.T) {
+	r, _ := newTestServer(t)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
-	newTestServer(t).ServeHTTP(w, req)
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/health", nil))
 	require.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), `"ok":true`)
 	assert.Contains(t, w.Body.String(), `"maxFileSize":1024`)
 }
 
 func TestUpload_RawBinary(t *testing.T) {
-	r := newTestServer(t)
+	r, _ := newTestServer(t)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/upload", bytes.NewReader([]byte("PNGDATA")))
 	req.Header.Set("Content-Type", "image/png")
@@ -66,7 +72,7 @@ func TestUpload_RawBinary(t *testing.T) {
 }
 
 func TestUpload_Multipart(t *testing.T) {
-	r := newTestServer(t)
+	r, _ := newTestServer(t)
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 	part, err := mw.CreateFormFile("file", "avatar.png")
@@ -88,7 +94,7 @@ func TestUpload_Multipart(t *testing.T) {
 }
 
 func TestUpload_MultipartMissingField(t *testing.T) {
-	r := newTestServer(t)
+	r, _ := newTestServer(t)
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 	require.NoError(t, mw.WriteField("notfile", "x"))
@@ -104,7 +110,7 @@ func TestUpload_MultipartMissingField(t *testing.T) {
 }
 
 func TestUpload_Empty(t *testing.T) {
-	r := newTestServer(t)
+	r, _ := newTestServer(t)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/upload", bytes.NewReader(nil))
 	req.Header.Set("Content-Type", "image/png")
@@ -115,7 +121,7 @@ func TestUpload_Empty(t *testing.T) {
 }
 
 func TestUpload_TooLarge(t *testing.T) {
-	r := newTestServer(t)
+	r, _ := newTestServer(t)
 	big := make([]byte, 2048) // > MaxFileSize 1024
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/upload", bytes.NewReader(big))
@@ -128,7 +134,7 @@ func TestUpload_TooLarge(t *testing.T) {
 }
 
 func TestUpload_NoAuth(t *testing.T) {
-	r := newTestServer(t)
+	r, _ := newTestServer(t)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/upload", bytes.NewReader([]byte("x")))
 	req.Header.Set("Content-Type", "image/png")
@@ -137,7 +143,7 @@ func TestUpload_NoAuth(t *testing.T) {
 }
 
 func TestServeUpload_RoundTrip(t *testing.T) {
-	r := newTestServer(t)
+	r, _ := newTestServer(t)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/upload", bytes.NewReader([]byte("DATA")))
 	req.Header.Set("Content-Type", "image/png")
@@ -154,7 +160,7 @@ func TestServeUpload_RoundTrip(t *testing.T) {
 }
 
 func TestServeUpload_Missing(t *testing.T) {
-	r := newTestServer(t)
+	r, _ := newTestServer(t)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/uploads/does-not-exist.png", nil)
 	r.ServeHTTP(w, req)
@@ -162,41 +168,18 @@ func TestServeUpload_Missing(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "not found")
 }
 
-func TestNotFound(t *testing.T) {
-	r := newTestServer(t)
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/nope", nil)
-	r.ServeHTTP(w, req)
-	assert.Equal(t, 404, w.Code)
-	assert.Contains(t, w.Body.String(), `"not found"`)
-}
+// TestSPA_FallbackAndAPI404 验证单服务下的兜底：未知非 API 路径回退到内嵌前端
+// （已构建为 index.html，未构建为占位页，均 200 text/html）；未知 /api/* 返回 404 JSON。
+func TestSPA_FallbackAndAPI404(t *testing.T) {
+	r, _ := newTestServer(t)
 
-func TestCORS_Preflight(t *testing.T) {
-	r := newTestServer(t)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodOptions, "/api/upload", nil)
-	req.Header.Set("Origin", "http://example.com")
-	req.Header.Set("Access-Control-Request-Method", "POST")
-	r.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusNoContent, w.Code)
-	assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
-	// 预检响应带方法/头/Max-Age（与 Hono cors() 一致）。
-	assert.Equal(t, "GET,POST,OPTIONS", w.Header().Get("Access-Control-Allow-Methods"))
-	assert.Equal(t, "Content-Type,Authorization,PRIVATE-TOKEN", w.Header().Get("Access-Control-Allow-Headers"))
-	assert.Equal(t, "86400", w.Header().Get("Access-Control-Max-Age"))
-}
-
-func TestCORS_NonPreflightHeaders(t *testing.T) {
-	r := newTestServer(t)
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
-	req.Header.Set("Origin", "http://example.com")
-	r.ServeHTTP(w, req)
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/some/client/route", nil))
 	assert.Equal(t, 200, w.Code)
-	// 实际响应只带 Allow-Origin / Expose-Headers，不带预检专用头（与 Hono 一致）。
-	assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
-	assert.Equal(t, "Content-Length", w.Header().Get("Access-Control-Expose-Headers"))
-	assert.Empty(t, w.Header().Get("Access-Control-Allow-Methods"))
-	assert.Empty(t, w.Header().Get("Access-Control-Allow-Headers"))
-	assert.Empty(t, w.Header().Get("Access-Control-Max-Age"))
+	assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+
+	w2 := httptest.NewRecorder()
+	r.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, "/api/does-not-exist", nil))
+	assert.Equal(t, 404, w2.Code)
+	assert.Contains(t, w2.Body.String(), "not found")
 }

@@ -1,8 +1,7 @@
-// 与 Go UI API (internal/api/ui) 的契约保持一致。
+// 与 Go 配置 API (internal/api) 的契约保持一致。
 
 export interface AppConfig {
   port: number
-  adminPort: number
   uploadDir: string
   publicBaseURL: string
   maxFileSize: number
@@ -16,7 +15,7 @@ export interface ConfigResponse {
   restartRequired: boolean
 }
 
-// token 为空/省略表示"保留现有值"；adminPort 只读，不发送。
+// token 为空/省略表示"保留现有值"。
 export interface ConfigUpdate {
   port?: number
   uploadDir?: string

@@ -20,7 +20,6 @@ const defaultConfigPath = "./config.yml"
 // 解析优先级：config.yml > 环境变量(/.env) > 硬编码默认值。
 type AppConfig struct {
 	Port          int
-	AdminPort     int
 	Token         string
 	UploadDir     string
 	PublicBaseURL string
@@ -89,7 +88,6 @@ func LoadFromPath(path string) (AppConfig, error) {
 
 	// 用环境变量(或硬编码默认)播种 viper 默认值——这是最低优先级，会被 config.yml 覆盖。
 	v.SetDefault("port", s.int64("PORT", 3000))
-	v.SetDefault("admin_port", s.int64("ADMIN_PORT", 3001))
 	v.SetDefault("token", s.str("STORAGE_TOKEN", ""))
 	v.SetDefault("upload_dir", s.str("UPLOAD_DIR", "./uploads"))
 	v.SetDefault("public_base_url", s.str("PUBLIC_BASE_URL", "http://localhost:3000"))
@@ -112,7 +110,6 @@ func LoadFromPath(path string) (AppConfig, error) {
 
 	cfg := AppConfig{
 		Port:          v.GetInt("port"),
-		AdminPort:     v.GetInt("admin_port"),
 		Token:         v.GetString("token"),
 		UploadDir:     v.GetString("upload_dir"),
 		PublicBaseURL: strings.TrimRight(v.GetString("public_base_url"), "/"),
@@ -134,12 +131,6 @@ func Validate(c AppConfig) error {
 	if c.Port < 1 || c.Port > 65535 {
 		return fmt.Errorf("PORT 超出范围 (1-65535): %d", c.Port)
 	}
-	if c.AdminPort < 1 || c.AdminPort > 65535 {
-		return fmt.Errorf("ADMIN_PORT 超出范围 (1-65535): %d", c.AdminPort)
-	}
-	if c.Port == c.AdminPort {
-		return fmt.Errorf("PORT 与 ADMIN_PORT 不能相同: %d", c.Port)
-	}
 	if c.MaxFileSize <= 0 {
 		return fmt.Errorf("MAX_FILE_SIZE 必须为正数: %d", c.MaxFileSize)
 	}
@@ -158,7 +149,6 @@ func Validate(c AppConfig) error {
 // yamlConfig 是 config.yml 的落盘形状（snake_case，与 viper key 一致）。
 type yamlConfig struct {
 	Port          int    `yaml:"port"`
-	AdminPort     int    `yaml:"admin_port"`
 	Token         string `yaml:"token"`
 	UploadDir     string `yaml:"upload_dir"`
 	PublicBaseURL string `yaml:"public_base_url"`
@@ -175,7 +165,6 @@ func Save(path string, c AppConfig) error {
 	}
 	data, err := yaml.Marshal(yamlConfig{
 		Port:          c.Port,
-		AdminPort:     c.AdminPort,
 		Token:         c.Token,
 		UploadDir:     c.UploadDir,
 		PublicBaseURL: c.PublicBaseURL,

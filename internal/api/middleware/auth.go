@@ -1,4 +1,4 @@
-// Package middleware 集中放置 HTTP 中间件：鉴权、CORS 等。
+// Package middleware 集中放置 HTTP 中间件：当前为 Bearer token 鉴权。
 package middleware
 
 import (

@@ -6,15 +6,23 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
-    outDir: '../internal/api/admin/webui/dist',
+    outDir: '../internal/api/webui/dist',
     // 不清空目录：保留被 git 跟踪的 .gitkeep（go:embed 的锚点），
     // 构建产物自身被 .gitignore 忽略。
     emptyOutDir: false,
+    // 固定产物文件名（不带 hash）：产物内嵌进二进制，无需浏览器缓存失效。
+    rollupOptions: {
+      output: {
+        entryFileNames: 'main.js',
+        chunkFileNames: '[name].js',
+        assetFileNames: 'main.[ext]',
+      },
+    },
   },
   server: {
     proxy: {
-      // 开发期把 /api 代理到本机 admin 监听端口（默认 3001）。
-      '/api': 'http://127.0.0.1:3001',
+      // 开发期把 /api 代理到本机服务端口（默认 3000）。
+      '/api': 'http://127.0.0.1:3000',
     },
   },
 })

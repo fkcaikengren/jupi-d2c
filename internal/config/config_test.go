@@ -28,7 +28,6 @@ func TestLoad_Defaults(t *testing.T) {
 	cfg, err := LoadFromPath(missingPath(t))
 	require.NoError(t, err)
 	assert.Equal(t, 3000, cfg.Port)
-	assert.Equal(t, 3001, cfg.AdminPort)
 	assert.Equal(t, "secret", cfg.Token)
 	assert.Equal(t, "./uploads", cfg.UploadDir)
 	assert.Equal(t, "http://localhost:3000", cfg.PublicBaseURL)
@@ -63,7 +62,7 @@ func TestLoad_Precedence_ConfigOverEnv(t *testing.T) {
 
 	path := missingPath(t)
 	require.NoError(t, Save(path, AppConfig{
-		Port: 4000, AdminPort: 4001, Token: "file-token",
+		Port: 4000, Token: "file-token",
 		UploadDir: "./uploads", PublicBaseURL: "http://localhost:4000",
 		MaxFileSize: 2048, WorkerCount: 2, QueueSize: 8,
 	}))
@@ -86,21 +85,19 @@ func TestLoad_Precedence_EnvOverDefault(t *testing.T) {
 
 func TestValidate_Errors(t *testing.T) {
 	base := AppConfig{
-		Port: 3000, AdminPort: 3001, Token: "secret",
+		Port: 3000, Token: "secret",
 		UploadDir: "./uploads", PublicBaseURL: "http://localhost",
 		MaxFileSize: 1024, WorkerCount: 1, QueueSize: 1,
 	}
 	require.NoError(t, Validate(base))
 
 	cases := map[string]func(c *AppConfig){
-		"空 token":      func(c *AppConfig) { c.Token = "" },
-		"port 越界":      func(c *AppConfig) { c.Port = 0 },
-		"adminPort 越界": func(c *AppConfig) { c.AdminPort = 70000 },
-		"端口相同":         func(c *AppConfig) { c.AdminPort = c.Port },
-		"maxFileSize":  func(c *AppConfig) { c.MaxFileSize = 0 },
-		"workerCount":  func(c *AppConfig) { c.WorkerCount = 0 },
-		"queueSize":    func(c *AppConfig) { c.QueueSize = 0 },
-		"空 uploadDir":  func(c *AppConfig) { c.UploadDir = "" },
+		"空 token":     func(c *AppConfig) { c.Token = "" },
+		"port 越界":     func(c *AppConfig) { c.Port = 0 },
+		"maxFileSize": func(c *AppConfig) { c.MaxFileSize = 0 },
+		"workerCount": func(c *AppConfig) { c.WorkerCount = 0 },
+		"queueSize":   func(c *AppConfig) { c.QueueSize = 0 },
+		"空 uploadDir": func(c *AppConfig) { c.UploadDir = "" },
 	}
 	for name, mut := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -115,7 +112,7 @@ func TestSave_RoundTrip(t *testing.T) {
 	os.Clearenv()
 	path := missingPath(t)
 	want := AppConfig{
-		Port: 8080, AdminPort: 8081, Token: "rt-token",
+		Port: 8080, Token: "rt-token",
 		UploadDir: "./data", PublicBaseURL: "https://cdn.example.com",
 		MaxFileSize: 5 * 1024 * 1024, WorkerCount: 3, QueueSize: 32,
 	}
@@ -132,7 +129,7 @@ func TestSave_NoLeftoverTempFiles(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")
 	require.NoError(t, Save(path, AppConfig{
-		Port: 3000, AdminPort: 3001, Token: "secret",
+		Port: 3000, Token: "secret",
 		UploadDir: "./uploads", PublicBaseURL: "http://localhost",
 		MaxFileSize: 1024, WorkerCount: 1, QueueSize: 1,
 	}))

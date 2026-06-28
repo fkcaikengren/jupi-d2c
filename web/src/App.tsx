@@ -231,7 +231,7 @@ function Panel({ token, onLogout }: { token: string; onLogout: () => void }) {
             onSubmit={onSubmit}
             className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
           >
-            <Field label="端口 (PORT)" hint="对外上传 API 端口；修改后需重启。">
+            <Field label="端口 (PORT)" hint="服务监听端口（上传 API / 配置面板 / 文件访问共用）；修改后需重启。">
               <input
                 type="number"
                 min={1}
@@ -240,10 +240,6 @@ function Panel({ token, onLogout }: { token: string; onLogout: () => void }) {
                 onChange={(e) => update('port', e.target.value)}
                 className={inputClass}
               />
-            </Field>
-
-            <Field label="面板端口 (ADMIN_PORT)" hint="UI 与配置 API 监听端口，公开访问。">
-              <input type="number" value={config.adminPort} readOnly className={`${inputClass} bg-slate-100 text-slate-500`} />
             </Field>
 
             <Field label="公开访问基址 (PUBLIC_BASE_URL)" hint="生成的文件 URL 前缀。">

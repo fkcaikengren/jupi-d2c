@@ -3,6 +3,7 @@
 /config.yml
 /d2c-manager
 *.out
+.reasonix/
 
 # macOS 资源管理器残留
 .DS_Store
@@ -11,5 +12,5 @@
 /web/node_modules/
 
 # 前端构建产物（内嵌进二进制）；仅保留 .gitkeep 作为 go:embed 锚点。
-/internal/api/ui/webui/dist/*
-!/internal/api/ui/webui/dist/.gitkeep
+/internal/api/webui/dist/*
+!/internal/api/webui/dist/.gitkeep

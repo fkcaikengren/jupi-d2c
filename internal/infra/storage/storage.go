@@ -27,6 +27,8 @@ type SaveOptions struct {
 	ContentType   string
 	UploadDir     string
 	PublicBaseURL string
+	// Tag 为本次生成 AST 的归档标签，非空时按其建子目录归档（见 sanitizeTag）。
+	Tag string
 }
 
 var extByContentType = map[string]string{
@@ -39,6 +41,25 @@ var extByContentType = map[string]string{
 	"image/x-icon":  ".ico",
 	"image/bmp":     ".bmp",
 	"image/avif":    ".avif",
+}
+
+// sanitizeTag 把客户端传入的 tag 清洗为安全的单层目录名：仅保留
+// [A-Za-z0-9._-]，并拒绝 "." / ".." 等会逃逸出上传目录的结果。
+// 返回 "" 表示不建子目录（直接平铺到 UploadDir）。
+func sanitizeTag(tag string) string {
+	var b strings.Builder
+	for _, r := range tag {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
+			r == '.', r == '_', r == '-':
+			b.WriteRune(r)
+		}
+	}
+	s := b.String()
+	if s == "" || s == "." || s == ".." || strings.Contains(s, "..") {
+		return ""
+	}
+	return s
 }
 
 func pickExtension(originalName, contentType string) string {
@@ -63,6 +84,11 @@ func SaveBytes(opts SaveOptions) (SavedFile, error) {
 	if err != nil {
 		return SavedFile{}, err
 	}
+	// 有合法 tag 时按其建一层子目录归档本次生成的资源；URL 也带上该段。
+	tag := sanitizeTag(opts.Tag)
+	if tag != "" {
+		dir = filepath.Join(dir, tag)
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return SavedFile{}, err
 	}
@@ -84,9 +110,14 @@ func SaveBytes(opts SaveOptions) (SavedFile, error) {
 		contentType = "application/octet-stream"
 	}
 
+	url := fmt.Sprintf("%s/uploads/%s", opts.PublicBaseURL, filename)
+	if tag != "" {
+		url = fmt.Sprintf("%s/uploads/%s/%s", opts.PublicBaseURL, tag, filename)
+	}
+
 	return SavedFile{
 		Filename:    filename,
-		URL:         fmt.Sprintf("%s/uploads/%s", opts.PublicBaseURL, filename),
+		URL:         url,
 		Size:        int64(len(opts.Bytes)),
 		ContentType: contentType,
 	}, nil
