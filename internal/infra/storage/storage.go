@@ -1,3 +1,5 @@
+// Package storage 是可替换的持久化后端（当前实现：本地磁盘）。
+// 接 S3 / OSS / R2 时只需新增同名函数，保持 SaveBytes 签名不变。
 package storage
 
 import (

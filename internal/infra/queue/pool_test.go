@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"d2c-manager/internal/storage"
+	"d2c-manager/internal/infra/storage"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

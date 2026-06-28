@@ -1,4 +1,5 @@
-package auth
+// Package middleware 集中放置 HTTP 中间件：鉴权、CORS 等。
+package middleware
 
 import (
 	"crypto/subtle"

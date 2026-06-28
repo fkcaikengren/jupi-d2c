@@ -1,4 +1,4 @@
-package httpapi
+package public
 
 import (
 	"bytes"
@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"d2c-manager/internal/config"
-	"d2c-manager/internal/queue"
-	"d2c-manager/internal/storage"
+	"d2c-manager/internal/infra/queue"
+	"d2c-manager/internal/infra/storage"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

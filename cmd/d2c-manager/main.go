@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load()
+	cfg, configPath, err := config.Load()
 	if err != nil {
 		log.Fatalf("[d2c-manager] config error: %v", err)
 	}
@@ -19,7 +19,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	d, err := daemon.New(cfg)
+	d, err := daemon.New(cfg, configPath)
 	if err != nil {
 		log.Fatalf("[d2c-manager] init error: %v", err)
 	}

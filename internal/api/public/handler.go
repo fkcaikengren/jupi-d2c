@@ -1,4 +1,6 @@
-package httpapi
+// Package public 是对外 HTTP API：上传、文件回传、健康检查。
+// 监听 0.0.0.0:PORT，承载插件客户端流量；CORS、鉴权在此装配。
+package public
 
 import (
 	"fmt"
@@ -11,8 +13,8 @@ import (
 	"time"
 
 	"d2c-manager/internal/config"
-	"d2c-manager/internal/queue"
-	"d2c-manager/internal/storage"
+	"d2c-manager/internal/infra/queue"
+	"d2c-manager/internal/infra/storage"
 
 	"github.com/gin-gonic/gin"
 )

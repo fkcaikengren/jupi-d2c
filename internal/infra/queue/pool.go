@@ -1,3 +1,6 @@
+// Package queue 提供有界任务队列 + 固定数量 worker，支持优雅关闭。
+// 它是 infra 层的并发基础设施，向上对调用者暴露 Submit / Shutdown 语义，
+// 向下注入可替换的 SaveFunc（默认接 storage.SaveBytes）。
 package queue
 
 import (
@@ -5,7 +8,7 @@ import (
 	"errors"
 	"sync"
 
-	"d2c-manager/internal/storage"
+	"d2c-manager/internal/infra/storage"
 )
 
 // ErrShuttingDown 在池已经开始关闭后提交任务时返回。
