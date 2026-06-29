@@ -4,6 +4,7 @@
 /jupi-d2c
 /jupi-d2c.log
 /jupi-d2c.pid
+/jupi-d2c.db
 *.out
 .reasonix/
 

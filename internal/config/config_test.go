@@ -12,10 +12,12 @@ import (
 // validCfg 返回一份可通过 Validate 的配置，UploadDir 用绝对路径避免被解析改写。
 func validCfg(t *testing.T) AppConfig {
 	t.Helper()
+	dir := t.TempDir()
 	return AppConfig{
 		Port:        8080,
 		Token:       "rt-token",
-		UploadDir:   t.TempDir(),
+		UploadDir:   dir,
+		DBPath:      filepath.Join(dir, "test.db"),
 		MaxFileSize: 5 * 1024 * 1024,
 		WorkerCount: 3,
 		QueueSize:   32,
@@ -129,6 +131,7 @@ func TestValidate_Errors(t *testing.T) {
 	base := AppConfig{
 		Port: 3000, Token: "secret",
 		UploadDir:   "/tmp/up",
+		DBPath:      "/tmp/up/jupi-d2c.db",
 		MaxFileSize: 1024, WorkerCount: 1, QueueSize: 1,
 	}
 	require.NoError(t, Validate(base))
@@ -140,6 +143,7 @@ func TestValidate_Errors(t *testing.T) {
 		"workerCount": func(c *AppConfig) { c.WorkerCount = 0 },
 		"queueSize":   func(c *AppConfig) { c.QueueSize = 0 },
 		"空 uploadDir": func(c *AppConfig) { c.UploadDir = "" },
+		"空 dbPath":    func(c *AppConfig) { c.DBPath = "" },
 	}
 	for name, mut := range cases {
 		t.Run(name, func(t *testing.T) {

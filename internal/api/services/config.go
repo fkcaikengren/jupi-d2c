@@ -38,6 +38,7 @@ func (s *ConfigService) RestartRequired(c config.AppConfig) bool {
 	return c.Port != r.Port ||
 		c.Token != r.Token ||
 		c.UploadDir != r.UploadDir ||
+		c.DBPath != r.DBPath ||
 		c.MaxFileSize != r.MaxFileSize ||
 		c.WorkerCount != r.WorkerCount ||
 		c.QueueSize != r.QueueSize

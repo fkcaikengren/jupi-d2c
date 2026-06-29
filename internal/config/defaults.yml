@@ -4,6 +4,8 @@
 port: 5678
 token: ""
 upload_dir: "./uploads"
+# SQLite 数据库文件（存放生成的 AST design）。相对路径锚定到本配置文件所在目录。
+db_path: "jupi-d2c.db"
 max_file_size: 10485760
 worker_count: 4
 queue_size: 64

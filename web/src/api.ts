@@ -114,6 +114,74 @@ export async function cleanupFiles(hours: number): Promise<CleanupResponse> {
   return body as CleanupResponse
 }
 
+// ===== design 契约（与 internal/api/handlers/design.go 一致）=====
+
+// 一条 design（一次生成的 AST 结果）的列表项元信息。
+export interface DesignItem {
+  id: string
+  tag: string
+  createdAt: number // unix 毫秒
+  astUrl: string // 公开可访问的 AST JSON 地址（GET /api/ast/:id）
+}
+
+export interface DesignListResponse {
+  items: DesignItem[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+// 分页查询 design 列表（公开，按生成时间倒序）。tags 非空时按 tag 过滤。
+export async function listDesigns(
+  page: number,
+  pageSize: number,
+  tags: string[] = [],
+): Promise<DesignListResponse> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+  for (const t of tags) params.append('tag', t)
+  const res = await request(`/api/design?${params.toString()}`)
+  const body = (await res.json().catch(() => ({}))) as Partial<DesignListResponse> & {
+    error?: string
+  }
+  if (!res.ok) throw new Error(body.error ?? `加载 design 列表失败 (${res.status})`)
+  return body as DesignListResponse
+}
+
+// 列出全部去重 tag（公开），供首页筛选下拉使用。
+export async function listDesignTags(): Promise<string[]> {
+  const res = await request('/api/design/tags')
+  const body = (await res.json().catch(() => ({}))) as { tags?: string[]; error?: string }
+  if (!res.ok) throw new Error(body.error ?? `加载 tag 列表失败 (${res.status})`)
+  return body.tags ?? []
+}
+
+// 清理结果（与 internal/api/handlers/design.go CleanupDesigns 一致）。
+export interface DesignCleanupResponse {
+  deleted: number
+  hours: number
+}
+
+// 清理 hours 小时前的 design（生成时间早于 now-hours），需鉴权。
+export async function cleanupDesigns(hours: number): Promise<DesignCleanupResponse> {
+  const res = await request(`/api/design/cleanup?hours=${hours}`, {
+    method: 'POST',
+    headers: authHeaders(),
+  })
+  const body = (await res.json().catch(() => ({}))) as Partial<DesignCleanupResponse> & {
+    error?: string
+  }
+  if (!res.ok) throw new Error(body.error ?? `清理失败 (${res.status})`)
+  return body as DesignCleanupResponse
+}
+
+// 拉取某个 design 的 AST JSON 原文（公开，URL 即凭据），返回格式化后的文本。
+export async function getAstText(astUrl: string): Promise<string> {
+  const res = await fetch(astUrl)
+  if (!res.ok) throw new Error(`加载 AST 失败 (${res.status})`)
+  const json = await res.json()
+  return JSON.stringify(json, null, 2)
+}
+
 export async function putConfig(update: ConfigUpdate): Promise<ConfigResponse> {
   const res = await request('/api/config', {
     method: 'PUT',

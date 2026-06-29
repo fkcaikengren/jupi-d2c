@@ -8,6 +8,11 @@
 //	PUT  /api/config          改配置（Bearer token）
 //	GET  /api/files           列出上传目录树（Bearer token）
 //	POST /api/files/cleanup   清理 N 小时前的旧文件，?hours=1（Bearer token）
+//	POST /api/design          保存一次生成的 AST（Bearer token）
+//	POST /api/design/cleanup  清理 N 小时前的 design，?hours=1（Bearer token）
+//	GET  /api/design          分页查询 design 列表，?page&pageSize&tag（公开）
+//	GET  /api/design/tags     列出全部去重 tag（公开）
+//	GET  /api/ast/:id         返回某个 design 的 AST JSON 原文（公开，URL 即凭据）
 //	GET  /uploads/*relpath    上传目录映射为静态资源（公开，URL 即凭据）
 //	/*                        内嵌前端 SPA（webui，NoRoute 兜底）
 //
@@ -16,6 +21,7 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 
@@ -47,9 +53,9 @@ func NewEngine() *gin.Engine {
 
 // NewRouter 构建整个服务的引擎：上传/下载 API、配置 API、上传目录静态托管、内嵌前端。
 // cfg 是启动期快照；configPath 指向 config.yml，配置 PUT 写回到此。
-func NewRouter(cfg config.AppConfig, pool *queue.Pool, configPath string) *gin.Engine {
+func NewRouter(cfg config.AppConfig, pool *queue.Pool, configPath string, db *sql.DB) *gin.Engine {
 	r := NewEngine()
-	h := handlers.New(cfg, pool, configPath)
+	h := handlers.New(cfg, pool, configPath, db)
 
 	r.GET("/health", h.Health)
 	r.POST("/api/upload", middleware.BearerAuth(cfg.Token), h.Upload)
@@ -57,6 +63,12 @@ func NewRouter(cfg config.AppConfig, pool *queue.Pool, configPath string) *gin.E
 	r.PUT("/api/config", middleware.BearerAuth(cfg.Token), h.PutConfig)
 	r.GET("/api/files", middleware.BearerAuth(cfg.Token), h.ListFiles)
 	r.POST("/api/files/cleanup", middleware.BearerAuth(cfg.Token), h.CleanupFiles)
+	// design：保存/清理需鉴权；列表、tag 列表与单个 AST 公开（URL 即凭据）。
+	r.POST("/api/design", middleware.BearerAuth(cfg.Token), h.SaveDesign)
+	r.POST("/api/design/cleanup", middleware.BearerAuth(cfg.Token), h.CleanupDesigns)
+	r.GET("/api/design", h.ListDesigns)
+	r.GET("/api/design/tags", h.ListTags)
+	r.GET("/api/ast/:id", h.GetAST)
 	r.GET("/uploads/*relpath", h.ServeUpload)
 
 	// 前端托管（静态资源 + SPA 回退）由 webui 包接管 NoRoute；

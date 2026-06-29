@@ -15,6 +15,7 @@ func sampleConfig(dir string) config.AppConfig {
 		Port:        3000,
 		Token:       "secret",
 		UploadDir:   dir,
+		DBPath:      filepath.Join(dir, "jupi-d2c.db"),
 		MaxFileSize: 1024,
 		WorkerCount: 2,
 		QueueSize:   8,

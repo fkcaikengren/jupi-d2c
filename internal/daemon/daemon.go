@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net"
@@ -11,6 +12,7 @@ import (
 
 	"jupi-d2c/internal/api"
 	"jupi-d2c/internal/config"
+	"jupi-d2c/internal/infra/database"
 	"jupi-d2c/internal/infra/queue"
 	"jupi-d2c/internal/infra/storage"
 )
@@ -22,6 +24,7 @@ type Daemon struct {
 	cfg        config.AppConfig
 	configPath string
 	pool       *queue.Pool
+	db         *sql.DB
 	server     *http.Server
 	ln         net.Listener
 }
@@ -39,12 +42,19 @@ func New(cfg config.AppConfig, configPath string) (*Daemon, error) {
 		return nil, fmt.Errorf("绑定监听器 :%d 失败: %w", cfg.Port, err)
 	}
 
+	db, err := database.Open(cfg.DBPath)
+	if err != nil {
+		ln.Close()
+		return nil, err
+	}
+
 	pool := queue.NewPool(cfg.WorkerCount, cfg.QueueSize, storage.SaveBytes)
 	return &Daemon{
 		cfg:        cfg,
 		configPath: configPath,
 		pool:       pool,
-		server:     &http.Server{Handler: api.NewRouter(cfg, pool, configPath)},
+		db:         db,
+		server:     &http.Server{Handler: api.NewRouter(cfg, pool, configPath, db)},
 		ln:         ln,
 	}, nil
 }
@@ -87,6 +97,10 @@ func (d *Daemon) gracefulStop() error {
 	if err := d.pool.Shutdown(shutdownCtx); err != nil {
 		log.Printf("[jupi-d2c] pool shutdown error: %v", err)
 		return err
+	}
+	// 池停妥后再关数据库：此时已无 handler 会再访问 db。
+	if err := d.db.Close(); err != nil {
+		log.Printf("[jupi-d2c] db close error: %v", err)
 	}
 	log.Printf("[jupi-d2c] stopped cleanly")
 	return nil

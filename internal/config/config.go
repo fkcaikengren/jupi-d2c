@@ -56,10 +56,15 @@ type AppConfig struct {
 	Port        int
 	Token       string
 	UploadDir   string
+	DBPath      string
 	MaxFileSize int64
 	WorkerCount int
 	QueueSize   int
 }
+
+// defaultDBPath 是 db_path 缺省时的回落值（相对配置文件目录），
+// 使 SQLite 数据库与 config.yml 同目录，自动跟随开发/生产的路径约定。
+const defaultDBPath = "jupi-d2c.db"
 
 // LoadFromPath 纯读取并校验 config.yml——文件不存在时直接返回错误，绝不写盘。
 // 生成默认配置是 Bootstrap/EnsureConfig 的显式职责，读取类命令不应有副作用。
@@ -82,10 +87,18 @@ func LoadFromPath(path string) (AppConfig, error) {
 		return AppConfig{}, fmt.Errorf("解析配置文件失败: %w", err)
 	}
 
+	// db_path 缺省回落到默认文件名：旧 config.yml 没有该 key，KnownFields(true) 仅对
+	// 文件中多余的 key 报错，缺失的 key 取零值，故必须在此显式补默认值后再锚定。
+	dbPath := y.DBPath
+	if strings.TrimSpace(dbPath) == "" {
+		dbPath = defaultDBPath
+	}
+
 	cfg := AppConfig{
 		Port:        y.Port,
 		Token:       y.Token,
-		UploadDir:   resolveUploadDir(y.UploadDir, path),
+		UploadDir:   resolveRelativeTo(y.UploadDir, path),
+		DBPath:      resolveRelativeTo(dbPath, path),
 		MaxFileSize: y.MaxFileSize,
 		WorkerCount: y.WorkerCount,
 		QueueSize:   y.QueueSize,
@@ -96,19 +109,20 @@ func LoadFromPath(path string) (AppConfig, error) {
 	return cfg, nil
 }
 
-// resolveUploadDir 把相对的上传目录锚定到配置文件所在目录，并归一化为绝对路径。
+// resolveRelativeTo 把相对路径锚定到配置文件所在目录，并归一化为绝对路径，
+// 使 upload_dir / db_path 等始终落在 config.yml 旁边而非进程工作目录。
 // 空值原样返回，交给 Validate 报“不能为空”。
-func resolveUploadDir(dir, configPath string) string {
-	if dir == "" {
-		return dir
+func resolveRelativeTo(p, configPath string) string {
+	if p == "" {
+		return p
 	}
-	if !filepath.IsAbs(dir) {
-		dir = filepath.Join(filepath.Dir(configPath), dir)
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(filepath.Dir(configPath), p)
 	}
-	if abs, err := filepath.Abs(dir); err == nil {
+	if abs, err := filepath.Abs(p); err == nil {
 		return abs
 	}
-	return dir
+	return p
 }
 
 // EnsureConfig 在路径不存在时从嵌入模板生成配置，存在则原样保留。
@@ -182,6 +196,9 @@ func Validate(c AppConfig) error {
 	if c.UploadDir == "" {
 		return errors.New("upload_dir 不能为空")
 	}
+	if c.DBPath == "" {
+		return errors.New("db_path 不能为空")
+	}
 	return nil
 }
 
@@ -190,6 +207,7 @@ type yamlConfig struct {
 	Port        int    `yaml:"port"`
 	Token       string `yaml:"token"`
 	UploadDir   string `yaml:"upload_dir"`
+	DBPath      string `yaml:"db_path"`
 	MaxFileSize int64  `yaml:"max_file_size"`
 	WorkerCount int    `yaml:"worker_count"`
 	QueueSize   int    `yaml:"queue_size"`
@@ -204,6 +222,7 @@ func Save(path string, c AppConfig) error {
 		Port:        c.Port,
 		Token:       c.Token,
 		UploadDir:   c.UploadDir,
+		DBPath:      c.DBPath,
 		MaxFileSize: c.MaxFileSize,
 		WorkerCount: c.WorkerCount,
 		QueueSize:   c.QueueSize,

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"jupi-d2c/internal/config"
+	"jupi-d2c/internal/infra/database"
 	"jupi-d2c/internal/infra/queue"
 	"jupi-d2c/internal/infra/storage"
 
@@ -19,14 +20,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newTestServer 起一个完整引擎（含 worker 池与临时 config.yml），供上传/配置测试共用。
+// newTestServer 起一个完整引擎（含 worker 池、临时 config.yml 与临时 SQLite），供上传/配置/design 测试共用。
 func newTestServer(t *testing.T) (*gin.Engine, string) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
+	dir := t.TempDir()
 	cfg := config.AppConfig{
 		Port:        3000,
 		Token:       "secret",
-		UploadDir:   t.TempDir(),
+		UploadDir:   dir,
+		DBPath:      filepath.Join(dir, "test.db"),
 		MaxFileSize: 1024,
 		WorkerCount: 2,
 		QueueSize:   8,
@@ -35,9 +38,13 @@ func newTestServer(t *testing.T) (*gin.Engine, string) {
 	pool.Start()
 	t.Cleanup(func() { _ = pool.Shutdown(context.Background()) })
 
+	db, err := database.Open(cfg.DBPath)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
 	path := filepath.Join(t.TempDir(), "config.yml")
 	require.NoError(t, config.Save(path, cfg))
-	return NewRouter(cfg, pool, path), path
+	return NewRouter(cfg, pool, path, db), path
 }
 
 type uploadResp struct {

@@ -3,24 +3,28 @@
 package handlers
 
 import (
+	"database/sql"
+
 	"jupi-d2c/internal/api/services"
 	"jupi-d2c/internal/config"
 	"jupi-d2c/internal/infra/queue"
 )
 
 // Handlers 持有处理请求所需的依赖：启动期配置快照与各 service。
-// cfg 用于鉴权外的运行期参数（maxFileSize、UploadDir）；service 封装池与配置读写。
+// cfg 用于鉴权外的运行期参数（maxFileSize、UploadDir）；service 封装池、配置读写与 design 存储。
 type Handlers struct {
 	cfg     config.AppConfig
 	uploads *services.UploadService
 	configs *services.ConfigService
+	designs *services.DesignService
 }
 
-// New 用启动期快照、worker 池与 config.yml 路径装配各 service。
-func New(cfg config.AppConfig, pool *queue.Pool, configPath string) *Handlers {
+// New 用启动期快照、worker 池、config.yml 路径与数据库连接装配各 service。
+func New(cfg config.AppConfig, pool *queue.Pool, configPath string, db *sql.DB) *Handlers {
 	return &Handlers{
 		cfg:     cfg,
 		uploads: services.NewUploadService(pool),
 		configs: services.NewConfigService(configPath, cfg),
+		designs: services.NewDesignService(db),
 	}
 }
