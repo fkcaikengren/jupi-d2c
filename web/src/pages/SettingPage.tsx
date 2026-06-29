@@ -3,7 +3,7 @@ import { AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import {
-  clearToken,
+  AuthError,
   getConfig,
   putConfig,
   type AppConfig,
@@ -58,6 +58,15 @@ export default function SettingPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [restartRequired, setRestartRequired] = useState(false)
 
+  // 鉴权失效：跳回 /auth 提示重新输入 token；其余错误交给调用方展示。返回是否已处理。
+  function handleAuthError(e: unknown): boolean {
+    if (e instanceof AuthError) {
+      navigate('/auth', { replace: true, state: { reason: 'expired' } })
+      return true
+    }
+    return false
+  }
+
   async function load() {
     setLoading(true)
     setError(null)
@@ -67,6 +76,7 @@ export default function SettingPage() {
       setForm(toForm(res.config))
       setRestartRequired(res.restartRequired)
     } catch (e) {
+      if (handleAuthError(e)) return
       setError((e as Error).message)
     } finally {
       setLoading(false)
@@ -104,14 +114,8 @@ export default function SettingPage() {
       setRestartRequired(res.restartRequired)
       setNotice('配置已保存到 config.yml')
     } catch (e) {
-      const msg = (e as Error).message
-      // 401 通常是 token 被改了或失效——清掉并回到鉴权页。
-      if (msg.includes('401')) {
-        clearToken()
-        navigate('/auth', { replace: true })
-        return
-      }
-      setError(msg)
+      if (handleAuthError(e)) return
+      setError((e as Error).message)
     } finally {
       setSaving(false)
     }

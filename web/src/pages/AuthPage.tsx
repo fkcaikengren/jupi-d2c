@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { AlertCircle } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { setToken } from '@/api'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -18,6 +18,10 @@ import { Label } from '@/components/ui/label'
 // 鉴权页：填 token。提交后写入 localStorage 并跳转首页。
 export default function AuthPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  // 由鉴权失效（401/403）跳转而来时给出提示，引导重新输入 token。
+  const expired =
+    (location.state as { reason?: string } | null)?.reason === 'expired'
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -44,6 +48,14 @@ export default function AuthPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={submit} className="space-y-4">
+            {expired && !error && (
+              <Alert variant="destructive">
+                <AlertCircle />
+                <AlertDescription>
+                  登录已失效，请重新输入 token。
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label htmlFor="token">访问令牌 (TOKEN)</Label>
               <Input

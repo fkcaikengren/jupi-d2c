@@ -63,14 +63,35 @@ function authHeaders(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+// 鉴权失效（401 未授权 / 403 禁止访问）。由页面捕获后跳回 /auth 重新输入 token。
+export class AuthError extends Error {
+  readonly status: number
+  constructor(status: number) {
+    super('登录已失效，请重新输入 token')
+    this.name = 'AuthError'
+    this.status = status
+  }
+}
+
+// 统一请求入口：401/403 一律视为鉴权失效——清掉本地 token 并抛出 AuthError，
+// 其余响应原样返回交给调用方处理。
+async function request(input: RequestInfo, init?: RequestInit): Promise<Response> {
+  const res = await fetch(input, init)
+  if (res.status === 401 || res.status === 403) {
+    clearToken()
+    throw new AuthError(res.status)
+  }
+  return res
+}
+
 export async function getConfig(): Promise<ConfigResponse> {
-  const res = await fetch('/api/config', { headers: authHeaders() })
+  const res = await request('/api/config', { headers: authHeaders() })
   if (!res.ok) throw new Error(`加载配置失败 (${res.status})`)
   return res.json() as Promise<ConfigResponse>
 }
 
 export async function getFiles(): Promise<FilesResponse> {
-  const res = await fetch('/api/files', { headers: authHeaders() })
+  const res = await request('/api/files', { headers: authHeaders() })
   if (!res.ok) throw new Error(`加载文件列表失败 (${res.status})`)
   return res.json() as Promise<FilesResponse>
 }
@@ -84,7 +105,7 @@ export interface CleanupResponse {
 
 // 清理 hours 小时前的旧文件（修改时间早于 now-hours）。
 export async function cleanupFiles(hours: number): Promise<CleanupResponse> {
-  const res = await fetch(`/api/files/cleanup?hours=${hours}`, {
+  const res = await request(`/api/files/cleanup?hours=${hours}`, {
     method: 'POST',
     headers: authHeaders(),
   })
@@ -94,7 +115,7 @@ export async function cleanupFiles(hours: number): Promise<CleanupResponse> {
 }
 
 export async function putConfig(update: ConfigUpdate): Promise<ConfigResponse> {
-  const res = await fetch('/api/config', {
+  const res = await request('/api/config', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(update),
