@@ -1,11 +1,17 @@
-import { LogOut, Moon, Settings, Sun } from 'lucide-react'
+import { LogOut, Moon, Sun } from 'lucide-react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { clearToken } from '@/api'
 import { Button } from '@/components/ui/button'
 import { useTheme } from '@/lib/theme'
 
-// 带顶栏的主布局：应用名 + 右侧操作区（暗色切换 / 设置 / 退出），下方为路由出口。
+// 顶栏菜单项：铺平到 header 的导航入口。
+const NAV_ITEMS = [
+  { to: '/files', label: '文件' },
+  { to: '/setting', label: '配置' },
+] as const
+
+// 带顶栏的主布局：应用名 + 右侧操作区（菜单 / 暗色切换 / 退出），下方为路由出口。
 export function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -15,8 +21,6 @@ export function Layout() {
     clearToken()
     navigate('/auth', { replace: true })
   }
-
-  const onSetting = location.pathname === '/setting'
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -28,6 +32,16 @@ export function Layout() {
           </Link>
 
           <nav className="flex items-center gap-1">
+            {NAV_ITEMS.map((item) => (
+              <Button
+                key={item.to}
+                variant={location.pathname === item.to ? 'secondary' : 'ghost'}
+                size="sm"
+                asChild
+              >
+                <Link to={item.to}>{item.label}</Link>
+              </Button>
+            ))}
             <Button
               variant="ghost"
               size="icon"
@@ -36,17 +50,6 @@ export function Layout() {
               aria-label="切换主题"
             >
               {theme === 'dark' ? <Sun /> : <Moon />}
-            </Button>
-            <Button
-              variant={onSetting ? 'secondary' : 'ghost'}
-              size="icon"
-              asChild
-              title="配置"
-              aria-label="配置"
-            >
-              <Link to="/setting">
-                <Settings />
-              </Link>
             </Button>
             <Button
               variant="ghost"
