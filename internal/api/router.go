@@ -6,6 +6,8 @@
 //	POST /api/upload          上传（Bearer token）
 //	GET  /api/config          读配置（Bearer token）
 //	PUT  /api/config          改配置（Bearer token）
+//	GET  /api/files           列出上传目录树（Bearer token）
+//	POST /api/files/cleanup   清理 N 小时前的旧文件，?hours=1（Bearer token）
 //	GET  /uploads/*relpath    上传目录映射为静态资源（公开，URL 即凭据）
 //	/*                        内嵌前端 SPA（webui，NoRoute 兜底）
 //
@@ -53,6 +55,8 @@ func NewRouter(cfg config.AppConfig, pool *queue.Pool, configPath string) *gin.E
 	r.POST("/api/upload", middleware.BearerAuth(cfg.Token), h.Upload)
 	r.GET("/api/config", middleware.BearerAuth(cfg.Token), h.GetConfig)
 	r.PUT("/api/config", middleware.BearerAuth(cfg.Token), h.PutConfig)
+	r.GET("/api/files", middleware.BearerAuth(cfg.Token), h.ListFiles)
+	r.POST("/api/files/cleanup", middleware.BearerAuth(cfg.Token), h.CleanupFiles)
 	r.GET("/uploads/*relpath", h.ServeUpload)
 
 	// 前端托管（静态资源 + SPA 回退）由 webui 包接管 NoRoute；
