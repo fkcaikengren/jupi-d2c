@@ -18,6 +18,13 @@ type ProjectScheme struct {
 	UpdatedAt   int64  `json:"updatedAt"` // unix 毫秒
 }
 
+// ProjectSchemeMeta 是方案列表项的元信息（不含 scheme markdown 大字段）。
+type ProjectSchemeMeta struct {
+	ProjectPath string `json:"projectPath"`
+	CreatedAt   int64  `json:"createdAt"` // unix 毫秒
+	UpdatedAt   int64  `json:"updatedAt"` // unix 毫秒
+}
+
 // ProjectSchemeService 负责项目适配方案的持久化与查询，以绝对路径为主键。
 type ProjectSchemeService struct {
 	db *sql.DB
@@ -42,6 +49,38 @@ func (s *ProjectSchemeService) Get(projectPath string) (ProjectScheme, error) {
 		return ProjectScheme{}, fmt.Errorf("查询项目方案失败: %w", err)
 	}
 	return ps, nil
+}
+
+// List 按更新时间倒序分页返回方案元信息（不含 scheme），并返回总数。
+func (s *ProjectSchemeService) List(page, pageSize int) ([]ProjectSchemeMeta, int, error) {
+	var total int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM project_schemes`).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("统计项目方案数失败: %w", err)
+	}
+
+	offset := (page - 1) * pageSize
+	rows, err := s.db.Query(
+		`SELECT project_path, created_at, updated_at FROM project_schemes`+
+			` ORDER BY updated_at DESC, project_path ASC LIMIT ? OFFSET ?`,
+		pageSize, offset,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询项目方案列表失败: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]ProjectSchemeMeta, 0, pageSize)
+	for rows.Next() {
+		var m ProjectSchemeMeta
+		if err := rows.Scan(&m.ProjectPath, &m.CreatedAt, &m.UpdatedAt); err != nil {
+			return nil, 0, fmt.Errorf("读取项目方案行失败: %w", err)
+		}
+		items = append(items, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("遍历项目方案行失败: %w", err)
+	}
+	return items, total, nil
 }
 
 // Upsert 按绝对路径写入适配方案：不存在则插入，存在则覆盖 scheme 并刷新 updated_at；

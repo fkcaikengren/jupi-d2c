@@ -6,6 +6,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// 把 unix 毫秒格式化为本地时间字符串。
+export function formatTime(ms: number): string {
+  return new Date(ms).toLocaleString('zh-CN', { hour12: false })
+}
+
 // 把字节数格式化为人类可读字符串（B / KB / MB / GB）。
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'

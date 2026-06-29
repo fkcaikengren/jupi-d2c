@@ -182,6 +182,50 @@ export async function getAstText(astUrl: string): Promise<string> {
   return JSON.stringify(json, null, 2)
 }
 
+// ===== project scheme 契约（与 internal/api/handlers/project_scheme.go 一致）=====
+
+// 一条项目适配方案的列表项元信息（不含 scheme markdown 大字段）。
+export interface ProjectSchemeMeta {
+  projectPath: string
+  createdAt: number // unix 毫秒
+  updatedAt: number // unix 毫秒
+}
+
+// 完整方案记录，含 scheme markdown 正文。
+export interface ProjectScheme extends ProjectSchemeMeta {
+  scheme: string
+}
+
+export interface ProjectSchemeListResponse {
+  items: ProjectSchemeMeta[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+// 分页查询项目方案列表（公开，按更新时间倒序）。
+export async function listProjectSchemes(
+  page: number,
+  pageSize: number,
+): Promise<ProjectSchemeListResponse> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+  const res = await request(`/api/project-scheme?${params.toString()}`)
+  const body = (await res.json().catch(() => ({}))) as Partial<ProjectSchemeListResponse> & {
+    error?: string
+  }
+  if (!res.ok) throw new Error(body.error ?? `加载方案列表失败 (${res.status})`)
+  return body as ProjectSchemeListResponse
+}
+
+// 按项目绝对路径拉取完整方案（含 scheme markdown）。
+export async function getProjectScheme(projectPath: string): Promise<ProjectScheme> {
+  const params = new URLSearchParams({ path: projectPath })
+  const res = await request(`/api/project-scheme/detail?${params.toString()}`)
+  const body = (await res.json().catch(() => ({}))) as Partial<ProjectScheme> & { error?: string }
+  if (!res.ok) throw new Error(body.error ?? `加载方案失败 (${res.status})`)
+  return body as ProjectScheme
+}
+
 export async function putConfig(update: ConfigUpdate): Promise<ConfigResponse> {
   const res = await request('/api/config', {
     method: 'PUT',

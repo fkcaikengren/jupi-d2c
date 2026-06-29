@@ -17,6 +17,7 @@ type Handlers struct {
 	uploads *services.UploadService
 	configs *services.ConfigService
 	designs *services.DesignService
+	schemes *services.ProjectSchemeService
 }
 
 // New 用启动期快照、worker 池、config.yml 路径与数据库连接装配各 service。
@@ -26,5 +27,6 @@ func New(cfg config.AppConfig, pool *queue.Pool, configPath string, db *sql.DB) 
 		uploads: services.NewUploadService(pool),
 		configs: services.NewConfigService(configPath, cfg),
 		designs: services.NewDesignService(db),
+		schemes: services.NewProjectSchemeService(db),
 	}
 }
