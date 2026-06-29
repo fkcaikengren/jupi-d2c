@@ -14,6 +14,7 @@
 //	GET  /api/design/tags     列出全部去重 tag（公开）
 //	GET  /api/ast/:id         返回某个 design 的 AST JSON 原文（公开，URL 即凭据）
 //	GET  /uploads/*relpath    上传目录映射为静态资源（公开，URL 即凭据）
+//	ANY  /mcp                 MCP 服务（Streamable HTTP）：query_ast / get_project_scheme / save_project_scheme（公开）
 //	/*                        内嵌前端 SPA（webui，NoRoute 兜底）
 //
 // CORS 全局放行所有来源（见 middleware.CORS），供跨域客户端（如插件）直接调用 /api/upload；
@@ -24,8 +25,10 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"time"
 
 	"jupi-d2c/internal/api/handlers"
+	"jupi-d2c/internal/api/mcp"
 	"jupi-d2c/internal/api/middleware"
 	"jupi-d2c/internal/api/webui"
 	"jupi-d2c/internal/config"
@@ -70,6 +73,11 @@ func NewRouter(cfg config.AppConfig, pool *queue.Pool, configPath string, db *sq
 	r.GET("/api/design/tags", h.ListTags)
 	r.GET("/api/ast/:id", h.GetAST)
 	r.GET("/uploads/*relpath", h.ServeUpload)
+
+	// MCP（Streamable HTTP）：单端点 /mcp，POST 发 JSON-RPC 调用、GET 走 SSE、DELETE 结束会话。
+	// 公开（与 /api/ast 一致），方案分析由 AI 端完成，本服务只做持久化。
+	mcpHandler := mcp.NewHandler(db, func() int64 { return time.Now().UnixMilli() })
+	r.Any("/mcp", gin.WrapH(mcpHandler))
 
 	// 前端托管（静态资源 + SPA 回退）由 webui 包接管 NoRoute；
 	// 未知 /api/* 仍返回 404 JSON，其余非 API 路径回退 index.html。

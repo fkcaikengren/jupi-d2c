@@ -25,11 +25,12 @@ func CORS() gin.HandlerFunc {
 		// 与 Hono cors() 一致：实际响应只带 Allow-Origin / Expose-Headers，
 		// Allow-Methods / Allow-Headers / Max-Age 仅在 OPTIONS 预检时下发。
 		h.Set("Access-Control-Allow-Origin", "*")
-		h.Set("Access-Control-Expose-Headers", "Content-Length")
+		h.Set("Access-Control-Expose-Headers", "Content-Length,Mcp-Session-Id")
 
 		if c.Request.Method == http.MethodOptions {
-			h.Set("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-			h.Set("Access-Control-Allow-Headers", "Content-Type,Authorization,PRIVATE-TOKEN")
+			// DELETE 与 Mcp-* 头供 /mcp（Streamable HTTP）的浏览器端客户端管理会话。
+			h.Set("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS")
+			h.Set("Access-Control-Allow-Headers", "Content-Type,Authorization,PRIVATE-TOKEN,Mcp-Session-Id,Mcp-Protocol-Version")
 			h.Set("Access-Control-Max-Age", maxAge)
 			c.AbortWithStatus(http.StatusNoContent)
 			return

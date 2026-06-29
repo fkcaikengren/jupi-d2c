@@ -11,6 +11,8 @@ import (
 )
 
 // schema 是幂等的建表语句：designs 存一条 AST 结果，created_at 用 unix 毫秒便于排序。
+// project_schemes 以项目绝对路径为主键，存 AI 分析得到的适配方案 markdown（单一可信来源，
+// 单位换算规则等都写在 markdown 里），供 MCP 工具按路径复用。
 const schema = `
 CREATE TABLE IF NOT EXISTS designs (
 	id         TEXT    PRIMARY KEY,
@@ -19,6 +21,13 @@ CREATE TABLE IF NOT EXISTS designs (
 	created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_designs_created_at ON designs(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS project_schemes (
+	project_path TEXT    PRIMARY KEY,
+	scheme       TEXT    NOT NULL,
+	created_at   INTEGER NOT NULL,
+	updated_at   INTEGER NOT NULL
+);
 `
 
 // Open 打开（或首次创建）SQLite 数据库并执行建表迁移。
