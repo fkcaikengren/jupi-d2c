@@ -68,13 +68,13 @@ function TokenGate({ onSubmit }: { onSubmit: (token: string) => void }) {
         <header className="mb-8">
           <h1 className="text-2xl font-semibold text-slate-900">Jupi D2C</h1>
           <p className="mt-1 text-sm text-slate-500">
-            本地控制面板 · 首次访问请输入 <code className="rounded bg-slate-200 px-1 py-0.5">STORAGE_TOKEN</code>。
+            本地控制面板 · 首次访问请输入 <code className="rounded bg-slate-200 px-1 py-0.5">TOKEN</code>。
           </p>
         </header>
 
         <form onSubmit={submit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">访问令牌 (STORAGE_TOKEN)</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700">访问令牌 (TOKEN)</span>
             <input
               type="password"
               autoFocus
@@ -248,7 +248,11 @@ function Panel({ token, onLogout }: { token: string; onLogout: () => void }) {
               />
             </Field>
 
-            <Field label="上传目录 (UPLOAD_DIR)" hint="变更后旧文件仍留在原目录，其 URL 可能失效。">
+            <Field
+              label="上传目录 (UPLOAD_DIR)"
+              help="相对路径相对于 ~/.jupi-d2c/ 目录解析；也可填写绝对路径。"
+              hint="变更后旧文件仍留在原目录，其 URL 可能失效。"
+            >
               <input
                 type="text"
                 value={form.uploadDir}
@@ -279,7 +283,7 @@ function Panel({ token, onLogout }: { token: string; onLogout: () => void }) {
             </div>
 
             <Field
-              label="存储令牌 (STORAGE_TOKEN)"
+              label="访问令牌 (TOKEN)"
               hint={config.tokenSet ? '已设置。留空表示保留当前值，填写则更新。' : '尚未设置，请填写。'}
             >
               <input
@@ -321,15 +325,28 @@ const inputClass =
 function Field({
   label,
   hint,
+  help,
   children,
 }: {
   label: string
   hint?: string
+  help?: string
   children: React.ReactNode
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
+      <span className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-700">
+        {label}
+        {help && (
+          <span
+            title={help}
+            aria-label={help}
+            className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-slate-300 text-[10px] font-normal leading-none text-slate-400 transition hover:border-slate-400 hover:text-slate-600"
+          >
+            ?
+          </span>
+        )}
+      </span>
       {children}
       {hint && <span className="mt-1 block text-xs text-slate-400">{hint}</span>}
     </label>
