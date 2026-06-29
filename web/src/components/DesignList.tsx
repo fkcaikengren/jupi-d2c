@@ -293,7 +293,7 @@ export function DesignList() {
         title={
           <span className="flex items-center gap-2">
             <FileJson className="size-4 text-muted-foreground" />
-            AST · {active?.tag}
+            AST · {active?.id}
             {astText && <CopyButton text={astText} title="复制 AST" />}
           </span>
         }

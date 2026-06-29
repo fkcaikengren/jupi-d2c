@@ -9,6 +9,7 @@ import { useTheme } from '@/lib/theme'
 const NAV_ITEMS = [
   { to: '/files', label: '文件' },
   { to: '/setting', label: '配置' },
+  { to: '/help', label: '帮助' },
 ] as const
 
 // 带顶栏的主布局：应用名 + 右侧操作区（菜单 / 暗色切换 / 退出），下方为路由出口。
