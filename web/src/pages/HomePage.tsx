@@ -30,7 +30,6 @@ import {
   Card,
   CardAction,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -42,7 +41,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 8
 
 // 清理选项：删除生成时间早于 N 天前的 design（API 以小时为单位，故 days * 24）。
 const CLEANUP_OPTIONS = [
@@ -178,9 +177,8 @@ export default function HomePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl">
             <FileJson className="size-5 text-muted-foreground" />
-            AST Design
+            Design (AST) 列表
           </CardTitle>
-          <CardDescription>查询插件同步保存的 AST，共 {total} 条，按生成时间倒序。</CardDescription>
           <CardAction>
             <div className="flex items-center gap-2">
               <TagFilter allTags={allTags} selected={selectedTags} onChange={setSelectedTags} />
@@ -294,7 +292,7 @@ export default function HomePage() {
               {/* 分页 */}
               <div className="mt-4 flex items-center justify-between text-sm">
                 <span className="text-xs text-muted-foreground">
-                  第 {page} / {totalPages} 页
+                  第 {page} / {totalPages} 页，共 {total} 条
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
