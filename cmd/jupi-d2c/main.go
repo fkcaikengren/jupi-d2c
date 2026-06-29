@@ -37,12 +37,12 @@ func main() {
 
 // newRootCmd 组装根命令与子命令。
 // 不带子命令直接运行根命令即前台阻塞运行服务（stdout 实时展示 HTTP 活动）；
-// start/stop/status 则以守护进程方式控制后台实例。
+// start/stop/restart/status 则以守护进程方式控制后台实例。
 func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "jupi-d2c",
 		Short:         "D2C 上传管理服务",
-		Long:          "D2C 上传管理服务。\n\n直接运行（无子命令）将在前台启动服务并打印 HTTP 活动；\nstart/stop/status 用于以守护进程方式控制后台实例。",
+		Long:          "D2C 上传管理服务。\n\n直接运行（无子命令）将在前台启动服务并打印 HTTP 活动；\nstart/stop/restart/status 用于以守护进程方式控制后台实例。",
 		Version:       fmt.Sprintf("%s (commit %s, built %s)", version, commit, date),
 		Args:          cobra.NoArgs,
 		SilenceUsage:  true, // 运行期错误不再打印 usage，避免噪音
@@ -67,7 +67,7 @@ func newRootCmd() *cobra.Command {
 	root.PersistentFlags().StringVar(&configFile, "config", "",
 		"配置文件路径（默认 ./config.yml，否则 ~/.jupi-d2c/config.yml）")
 
-	root.AddCommand(newStartCmd(), newStopCmd(), newStatusCmd())
+	root.AddCommand(newStartCmd(), newStopCmd(), newRestartCmd(), newStatusCmd())
 	return root
 }
 

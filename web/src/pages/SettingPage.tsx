@@ -144,7 +144,13 @@ export default function SettingPage() {
         <Alert variant="warning">
           <AlertTriangle />
           <AlertDescription>
-            已保存的配置与正在运行的实例不一致，需<strong>重启 daemon</strong> 才能生效。
+            <p>
+              已保存的配置与正在运行的实例不一致，请手动执行{' '}
+              <code className="rounded bg-warning/15 px-1 py-0.5 font-mono text-[0.85em]">
+                jupi-d2c restart
+              </code>{' '}
+              重新启动后生效。
+            </p>
           </AlertDescription>
         </Alert>
       )}

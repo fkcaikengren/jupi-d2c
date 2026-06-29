@@ -23,10 +23,8 @@ export function Layout() {
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2 font-semibold">
+            <img src="/jupi-logo.png" alt="Jupi D2C" className="h-6 w-6 rounded-full" />
             <span className="text-base tracking-tight">Jupi D2C</span>
-            <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
-              控制面板
-            </span>
           </Link>
 
           <nav className="flex items-center gap-1">
