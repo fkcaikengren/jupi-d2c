@@ -1,7 +1,7 @@
 # Jupi D2C 默认配置（编译时嵌入，首次运行自动生成）。
 # 所有字段均可在 config.yml 中覆盖。
 
-port: 3000
+port: 5678
 token: ""
 upload_dir: "./uploads"
 max_file_size: 10485760

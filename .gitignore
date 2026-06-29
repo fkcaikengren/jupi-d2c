@@ -2,6 +2,8 @@
 .env
 /config.yml
 /jupi-d2c
+/jupi-d2c.log
+/jupi-d2c.pid
 *.out
 .reasonix/
 

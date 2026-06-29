@@ -43,6 +43,13 @@ func ResolvePath(flagPath string) string {
 	return filepath.Join(ConfigDir(), "config.yml")
 }
 
+// RuntimeDir 返回运行时辅助文件（PID / 日志）的默认存放目录，与配置解析保持同一约定：
+// 开发（存在 ./config.yml）落在进程工作目录，生产落在 ~/.jupi-d2c。
+// 取「解析出的配置文件所在目录」，使这些文件始终与 config.yml 相邻，便于运维定位。
+func RuntimeDir(flagConfigPath string) string {
+	return filepath.Dir(ResolvePath(flagConfigPath))
+}
+
 // AppConfig 是启动期解析并校验后的配置。
 // 配置的唯一来源是 config.yml，无环境变量 / .env 兜底。
 type AppConfig struct {

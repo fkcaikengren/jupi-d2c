@@ -64,7 +64,7 @@ git push origin v0.1.0
 
 ### 网关层：单一服务、单端口
 
-作为本地桌面/CLI 工具，所有路由共用一个端口 `0.0.0.0:PORT`（默认 3000），一个 gin 引擎：
+作为本地桌面/CLI 工具，所有路由共用一个端口 `0.0.0.0:PORT`（默认 5678），一个 gin 引擎：
 
 ```
    /health            健康检查（公开）
@@ -95,7 +95,7 @@ go build -o jupi-d2c ./cmd/jupi-d2c && ./jupi-d2c
 
 无需任何环境变量或 `.env`：首次启动会在配置缺省落点自动生成 `config.yml` 并把随机 token 打到 stderr（详见「配置」）。
 
-启动后：上传 API、文件访问与控制面板都在 `http://localhost:3000`（控制面板在 `/`）。
+启动后：上传 API、文件访问与控制面板都在 `http://localhost:5678`（控制面板在 `/`）。
 
 > `go build` 不依赖前端产物即可通过：`internal/api/webui/dist/.gitkeep` 作为 `go:embed` 锚点，配合 `//go:embed all:dist` 的 `all:` 前缀（裸 `//go:embed dist` 会跳过 `.` 开头文件、空目录时编译失败）。只有跑过 `pnpm build` 才会内嵌真实 UI。
 
@@ -104,12 +104,14 @@ go build -o jupi-d2c ./cmd/jupi-d2c && ./jupi-d2c
 裸命令在前台运行（stdout 实时打印 HTTP 活动）；以下子命令以守护进程方式管理后台实例：
 
 ```bash
-./jupi-d2c start    # 后台拉起；日志写入 ./jupi-d2c.log，PID 写入 ./jupi-d2c.pid
+./jupi-d2c start    # 后台拉起；日志写入 jupi-d2c.log，PID 写入 jupi-d2c.pid
 ./jupi-d2c status   # 查看运行状态
 ./jupi-d2c stop     # 优雅关闭
 ```
 
-通用 flag：`--config <path>`（配置文件路径）、`--pid-file <path>`（默认 `./jupi-d2c.pid`）；`--log-file <path>` 仅 `start` 可用（默认 `./jupi-d2c.log`）。
+通用 flag：`--config <path>`（配置文件路径）、`--pid-file <path>`；`--log-file <path>` 仅 `start` 可用。
+
+`--pid-file` / `--log-file` 默认与配置文件同目录、与 `config.yml` 相邻：开发（存在 `./config.yml`）落进程工作目录；生产落 `~/.jupi-d2c/`（即 `~/.jupi-d2c/jupi-d2c.pid`、`~/.jupi-d2c/jupi-d2c.log`）。显式指定 flag 时以 flag 为准。
 
 ## 控制面板（Web UI）
 
@@ -118,7 +120,7 @@ go build -o jupi-d2c ./cmd/jupi-d2c && ./jupi-d2c
 ```bash
 cd web
 pnpm install      # 依赖 esbuild 构建脚本已在 pnpm-workspace.yaml 放行
-pnpm dev          # 开发服务器，/api 代理到 127.0.0.1:3000
+pnpm dev          # 开发服务器，/api 代理到 127.0.0.1:5678
 pnpm build        # 产物输出到 ../internal/api/webui/dist，供 go:embed 打包
 ```
 
@@ -162,7 +164,7 @@ cp config.example.yml config.yml   # 复制示例后填好 token
 
 | yml 键 | 默认 | 说明 |
 |---|---|---|
-| `port` | `3000` | 服务监听端口（上传 API / 配置面板 / 文件访问共用） |
+| `port` | `5678` | 服务监听端口（上传 API / 配置面板 / 文件访问共用） |
 | `token` | （必填） | 客户端 token，留空启动报错；自动生成时填入随机值 |
 | `upload_dir` | `./uploads` | 落盘目录；相对路径锚定到配置文件所在目录 |
 | `max_file_size` | `10485760` | 单文件最大字节 |

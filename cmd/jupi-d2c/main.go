@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"jupi-d2c/internal/config"
@@ -46,14 +47,23 @@ func newRootCmd() *cobra.Command {
 		Args:          cobra.NoArgs,
 		SilenceUsage:  true, // 运行期错误不再打印 usage，避免噪音
 		SilenceErrors: true, // 错误由 main 统一打印，避免重复
+		// 未显式指定 --pid-file 时，把默认 PID 落点对齐到配置目录：
+		// 开发（./config.yml）落工作目录，生产落 ~/.jupi-d2c。configFile 此时已完成解析。
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if !cmd.Flags().Changed("pid-file") {
+				pidFile = filepath.Join(config.RuntimeDir(configFile), "jupi-d2c.pid")
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runForeground()
 		},
 	}
 	root.SetVersionTemplate("jupi-d2c {{.Version}}\n")
 
-	root.PersistentFlags().StringVar(&pidFile, "pid-file", daemon.DefaultPIDFile,
-		"PID 文件路径")
+	// 默认留空，真正的默认在 PersistentPreRunE 里按配置目录解析（见上）。
+	root.PersistentFlags().StringVar(&pidFile, "pid-file", "",
+		"PID 文件路径（默认与配置同目录：./jupi-d2c.pid 或 ~/.jupi-d2c/jupi-d2c.pid）")
 	root.PersistentFlags().StringVar(&configFile, "config", "",
 		"配置文件路径（默认 ./config.yml，否则 ~/.jupi-d2c/config.yml）")
 

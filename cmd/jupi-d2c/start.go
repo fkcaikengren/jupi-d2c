@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -13,9 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// defaultLogFile 是后台进程 stdout/stderr 的落盘位置。
-const defaultLogFile = "./jupi-d2c.log"
-
 var logFile string // --log-file
 
 func newStartCmd() *cobra.Command {
@@ -24,6 +22,12 @@ func newStartCmd() *cobra.Command {
 		Short: "后台启动服务",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			// 未显式指定 --log-file 时，把日志落点对齐到配置目录：
+			// 开发（./config.yml）落工作目录，生产落 ~/.jupi-d2c。
+			if !cmd.Flags().Changed("log-file") {
+				logFile = filepath.Join(config.RuntimeDir(configFile), "jupi-d2c.log")
+			}
+
 			// 已在运行则拒绝重复启动。
 			if pid, err := daemon.RunningPID(pidFile); err != nil {
 				return fmt.Errorf("检查运行状态失败: %w", err)
@@ -36,6 +40,13 @@ func newStartCmd() *cobra.Command {
 			cfgPath := config.ResolvePath(configFile)
 			if _, err := config.EnsureConfig(cfgPath); err != nil {
 				return fmt.Errorf("准备配置失败: %w", err)
+			}
+
+			// 读出端口与 token，供启动成功后提示访问地址（首次生成的 token 也已由
+			// Bootstrap 打到 stderr，这里再次显示便于直接复制使用）。
+			cfg, err := config.LoadFromPath(cfgPath)
+			if err != nil {
+				return fmt.Errorf("加载配置失败: %w", err)
 			}
 
 			// 把后台进程的输出重定向到日志文件。
@@ -84,10 +95,15 @@ func newStartCmd() *cobra.Command {
 				return fmt.Errorf("服务启动后立即退出，详见日志 %s", logFile)
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "已启动 (pid %d)，日志: %s\n", pid, logFile)
+			out2 := cmd.OutOrStdout()
+			fmt.Fprintf(out2, "已启动 (pid %d)\n", pid)
+			fmt.Fprintf(out2, "  访问地址: http://localhost:%d\n", cfg.Port)
+			fmt.Fprintf(out2, "  访问 token: %s\n", cfg.Token)
+			fmt.Fprintf(out2, "  日志文件: %s\n", logFile)
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&logFile, "log-file", defaultLogFile, "后台进程日志文件路径")
+	// 默认留空，真正的默认在 RunE 里按配置目录解析（见上）。
+	cmd.Flags().StringVar(&logFile, "log-file", "", "后台进程日志文件路径（默认与配置同目录：./jupi-d2c.log 或 ~/.jupi-d2c/jupi-d2c.log）")
 	return cmd
 }
