@@ -15,6 +15,7 @@
 //	GET  /api/ast/:id         返回某个 design 的 AST JSON 原文（公开，URL 即凭据）
 //	GET  /api/project-scheme        分页查询项目适配方案列表，?page&pageSize（公开）
 //	GET  /api/project-scheme/detail 按 ?path 返回某项目方案的完整 markdown（公开）
+//	POST /api/ai-chat         代理 OpenAI 兼容 API 聊天（Bearer token）
 //	GET  /uploads/*relpath    上传目录映射为静态资源（公开，URL 即凭据）
 //	ANY  /mcp                 MCP 服务（Streamable HTTP）：query_ast / get_project_scheme / save_project_scheme（公开）
 //	/*                        内嵌前端 SPA（webui，NoRoute 兜底）
@@ -77,6 +78,7 @@ func NewRouter(cfg config.AppConfig, pool *queue.Pool, configPath string, db *sq
 	// project scheme：列表与详情公开（与 design 一致），数据由 MCP 端写入。
 	r.GET("/api/project-scheme", h.ListProjectSchemes)
 	r.GET("/api/project-scheme/detail", h.GetProjectScheme)
+	r.POST("/api/ai-chat", middleware.BearerAuth(cfg.Token), h.AIChat)
 	r.GET("/uploads/*relpath", h.ServeUpload)
 
 	// MCP（Streamable HTTP）：单端点 /mcp，POST 发 JSON-RPC 调用、GET 走 SSE、DELETE 结束会话。

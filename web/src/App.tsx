@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { RequireToken } from '@/components/RequireToken'
 import AuthPage from '@/pages/AuthPage'
+import AIChatPage from '@/pages/AIChatPage'
 import FilesPage from '@/pages/FilesPage'
 import HelpPage from '@/pages/HelpPage'
 import HomePage from '@/pages/HomePage'
@@ -27,6 +28,7 @@ export default function App() {
       >
         <Route path="/" element={<HomePage />} />
         <Route path="/files" element={<FilesPage />} />
+        <Route path="/ai" element={<AIChatPage />} />
         <Route path="/setting" element={<SettingPage />} />
         <Route path="/help" element={<HelpPage />} />
       </Route>

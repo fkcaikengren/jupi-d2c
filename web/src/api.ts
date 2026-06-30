@@ -236,3 +236,47 @@ export async function putConfig(update: ConfigUpdate): Promise<ConfigResponse> {
   if (!res.ok) throw new Error(body.error ?? `保存失败 (${res.status})`)
   return body as ConfigResponse
 }
+
+// ===== AI Chat 契约（与 internal/api/handlers/chat.go 一致）=====
+
+export interface ChatMessage {
+  role: string
+  content: string
+}
+
+export interface ChatRequest {
+  url: string
+  key: string
+  model: string
+  messages: ChatMessage[]
+}
+
+export interface Usage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
+
+export interface ChatResponse {
+  message: ChatMessage
+  usage?: Usage
+}
+
+export interface ChatDataResponse {
+  data: ChatResponse
+}
+
+// 发送 AI 聊天请求（非流式，单次生成）。
+// url/key/model 由前端页面配置，不上传到服务端持久化。
+export async function aiChat(body: ChatRequest): Promise<ChatDataResponse> {
+  const res = await request('/api/ai-chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  })
+  const json = (await res.json().catch(() => ({}))) as Partial<ChatDataResponse> & {
+    error?: string
+  }
+  if (!res.ok) throw new Error(json.error ?? `AI 对话失败 (${res.status})`)
+  return json as ChatDataResponse
+}

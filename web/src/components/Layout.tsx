@@ -8,6 +8,7 @@ import { useTheme } from '@/lib/theme'
 // 顶栏菜单项：铺平到 header 的导航入口。
 const NAV_ITEMS = [
   { to: '/files', label: '文件' },
+  { to: '/ai', label: 'AI' },
   { to: '/setting', label: '配置' },
   { to: '/help', label: '帮助' },
 ] as const
