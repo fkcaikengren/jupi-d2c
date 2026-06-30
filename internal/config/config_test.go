@@ -44,7 +44,7 @@ func TestLoadFromPath_RoundTrip(t *testing.T) {
 
 func TestLoadFromPath_RejectsUnknownKey(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yml")
-	raw := "port: 3000\ntoken: secret\nupload_dir: /tmp/up\n" +
+	raw := "port: 5678\ntoken: secret\nupload_dir: /tmp/up\n" +
 		"max_file_size: 1024\n" +
 		"worker_count: 1\nqueue_size: 1\nbogus_key: 1\n"
 	require.NoError(t, os.WriteFile(path, []byte(raw), 0o600))
@@ -56,7 +56,7 @@ func TestLoadFromPath_RejectsUnknownKey(t *testing.T) {
 func TestLoadFromPath_ResolvesRelativeUploadDir(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")
-	raw := "port: 3000\ntoken: secret\nupload_dir: ./uploads\n" +
+	raw := "port: 5678\ntoken: secret\nupload_dir: ./uploads\n" +
 		"max_file_size: 1024\n" +
 		"worker_count: 1\nqueue_size: 1\n"
 	require.NoError(t, os.WriteFile(path, []byte(raw), 0o600))
@@ -129,7 +129,7 @@ func TestResolvePath_Precedence(t *testing.T) {
 
 func TestValidate_Errors(t *testing.T) {
 	base := AppConfig{
-		Port: 3000, Token: "secret",
+		Port: 5678, Token: "secret",
 		UploadDir:   "/tmp/up",
 		DBPath:      "/tmp/up/jupi-d2c.db",
 		MaxFileSize: 1024, WorkerCount: 1, QueueSize: 1,

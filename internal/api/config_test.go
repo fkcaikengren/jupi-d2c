@@ -48,7 +48,7 @@ func TestGetConfig_OK(t *testing.T) {
 
 	var resp configResp
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.Equal(t, 3000, resp.Config.Port)
+	assert.Equal(t, 5678, resp.Config.Port)
 	assert.True(t, resp.Config.TokenSet)
 	assert.False(t, resp.RestartRequired) // 磁盘与运行快照一致
 	// token 只写不回显：响应体里不应出现明文 token。
@@ -109,5 +109,5 @@ func TestPutConfig_InvalidRejected(t *testing.T) {
 	// 非法配置绝不落盘：磁盘仍是初始 port。
 	onDisk, err := config.LoadFromPath(path)
 	require.NoError(t, err)
-	assert.Equal(t, 3000, onDisk.Port)
+	assert.Equal(t, 5678, onDisk.Port)
 }

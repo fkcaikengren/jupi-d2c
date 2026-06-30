@@ -26,7 +26,7 @@ func newTestServer(t *testing.T) (*gin.Engine, string) {
 	gin.SetMode(gin.TestMode)
 	dir := t.TempDir()
 	cfg := config.AppConfig{
-		Port:        3000,
+		Port:        5678,
 		Token:       "secret",
 		UploadDir:   dir,
 		DBPath:      filepath.Join(dir, "test.db"),
@@ -73,7 +73,7 @@ func TestUpload_RawBinary(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	assert.Equal(t, int64(7), body.Data.Size)
 	assert.Equal(t, "image/png", body.Data.ContentType)
-	assert.Contains(t, body.Data.URL, "http://localhost:3000/uploads/")
+	assert.Contains(t, body.Data.URL, "http://localhost:5678/uploads/")
 	assert.Regexp(t, `\.png$`, body.Data.Filename)
 }
 

@@ -27,12 +27,12 @@ func TestSaveBytes_WritesFileAndReturnsMeta(t *testing.T) {
 		Bytes:       data,
 		ContentType: "image/png",
 		UploadDir:   dir,
-		BaseURL:     "http://localhost:3000",
+		BaseURL:     "http://localhost:5678",
 	})
 	require.NoError(t, err)
 
 	assert.Regexp(t, regexp.MustCompile(`^\d+-[0-9a-f]{12}\.png$`), saved.Filename)
-	assert.Equal(t, "http://localhost:3000/uploads/"+saved.Filename, saved.URL)
+	assert.Equal(t, "http://localhost:5678/uploads/"+saved.Filename, saved.URL)
 	assert.Equal(t, int64(len(data)), saved.Size)
 	assert.Equal(t, "image/png", saved.ContentType)
 
@@ -46,7 +46,7 @@ func TestSaveBytes_DefaultContentType(t *testing.T) {
 	saved, err := SaveBytes(SaveOptions{
 		Bytes:     []byte("x"),
 		UploadDir: dir,
-		BaseURL:   "http://localhost:3000",
+		BaseURL:   "http://localhost:5678",
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "application/octet-stream", saved.ContentType)

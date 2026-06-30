@@ -12,7 +12,7 @@ import (
 
 func sampleConfig(dir string) config.AppConfig {
 	return config.AppConfig{
-		Port:        3000,
+		Port:        5678,
 		Token:       "secret",
 		UploadDir:   dir,
 		DBPath:      filepath.Join(dir, "jupi-d2c.db"),
