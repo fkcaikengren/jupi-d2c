@@ -2,6 +2,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronDown,
+  Download,
   ExternalLink,
   Eye,
   FileJson,
@@ -33,6 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { downloadAstPackage } from '@/lib/downloadAstPackage'
 import { formatTime } from '@/lib/utils'
 
 const PAGE_SIZE = 8
@@ -67,6 +69,7 @@ export function DesignList() {
   const [astText, setAstText] = useState('')
   const [astLoading, setAstLoading] = useState(false)
   const [astError, setAstError] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
 
   // load 依赖 selectedTags：选中项变化时其身份变化，触发下方 effect 重新拉取第 1 页。
   const load = useCallback(
@@ -117,6 +120,19 @@ export function DesignList() {
       setAstLoading(false)
     }
   }, [])
+
+  // 下载 AST 资源包。
+  const handleDownload = useCallback(async (item: DesignItem) => {
+    if (downloading) return
+    setDownloading(true)
+    try {
+      await downloadAstPackage(item.astUrl, item.id)
+    } catch (e) {
+      setAstError(e instanceof Error ? e.message : '下载失败')
+    } finally {
+      setDownloading(false)
+    }
+  }, [downloading])
 
   // 确认清理：删除 N 天前的 design，成功后刷新列表与 tag 列表。
   async function confirmCleanup() {
@@ -248,10 +264,21 @@ export function DesignList() {
                         {formatTime(item.createdAt)}
                       </td>
                       <td className="px-2 py-2 text-right">
-                        <Button variant="outline" size="sm" onClick={() => void viewAst(item)}>
-                          <Eye className="size-4" />
-                          查看 AST
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="outline" size="sm" onClick={() => void viewAst(item)}>
+                            <Eye className="size-4" />
+                            查看 AST
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={downloading}
+                            onClick={() => void handleDownload(item)}
+                          >
+                            <Download className={downloading ? 'size-4 animate-pulse' : 'size-4'} />
+                            下载资源包
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
