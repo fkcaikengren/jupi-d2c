@@ -12,7 +12,7 @@ export default function HelpPage() {
 
       <Card>
         <CardContent className="py-6">
-          <div className="prose prose-sm max-w-none dark:prose-invert">
+          <div className="prose prose-sm max-w-none dark:prose-invert prose-code:before:content-none prose-code:after:content-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{helpMd}</ReactMarkdown>
           </div>
         </CardContent>
