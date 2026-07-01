@@ -12,8 +12,8 @@ import (
 )
 
 // stopTimeout 是发出 SIGTERM 后等待进程优雅退出的上限。
-// 略大于 daemon 内部的 shutdownTimeout(30s)，给排空请求/队列留足余量。
-const stopTimeout = 35 * time.Second
+// 略大于 daemon 内部的最大超时(5s)，给排空请求/队列留足余量。
+const stopTimeout = 10 * time.Second
 
 func newStopCmd() *cobra.Command {
 	return &cobra.Command{

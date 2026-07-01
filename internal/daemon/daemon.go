@@ -17,8 +17,6 @@ import (
 	"jupi-d2c/internal/infra/storage"
 )
 
-const shutdownTimeout = 30 * time.Second
-
 // Daemon 组合单一 HTTP server 与 worker 池，并管理它们的启动/关闭顺序。
 type Daemon struct {
 	cfg        config.AppConfig
@@ -87,14 +85,24 @@ func (d *Daemon) Addr() net.Addr { return d.ln.Addr() }
 
 // gracefulStop 先停 HTTP server（排空在途请求、停止接收），再停池
 // （排空队列、等 worker）。这个顺序保证池关闭时不会有 handler 还在 Submit。
+// Server 超时 3 秒后强制关闭所有活跃连接（杀掉 SSE 等长连接），
+// Pool 独立 5 秒超时排空队列——无任务时总耗时 < 1 秒。
 func (d *Daemon) gracefulStop() error {
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
-	if err := d.server.Shutdown(shutdownCtx); err != nil {
-		log.Printf("[jupi-d2c] server shutdown error: %v", err)
+	// 1. 停 HTTP server：短超时尝试优雅关闭（排空正常 HTTP 请求），
+	//    超时则强制关闭，杀掉 SSE 等永不空闲的长连接。
+	serverCtx, serverCancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer serverCancel()
+	if err := d.server.Shutdown(serverCtx); err != nil {
+		log.Printf("[jupi-d2c] server graceful shutdown timeout, force closing: %v", err)
+		if closeErr := d.server.Close(); closeErr != nil {
+			log.Printf("[jupi-d2c] server close error: %v", closeErr)
+		}
 	}
-	if err := d.pool.Shutdown(shutdownCtx); err != nil {
+
+	// 2. 停 worker pool：独立超时，让 worker 排空队列中的排队任务。
+	poolCtx, poolCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer poolCancel()
+	if err := d.pool.Shutdown(poolCtx); err != nil {
 		log.Printf("[jupi-d2c] pool shutdown error: %v", err)
 		return err
 	}
