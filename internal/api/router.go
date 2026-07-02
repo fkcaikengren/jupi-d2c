@@ -74,8 +74,9 @@ func NewRouter(cfg config.AppConfig, pool *queue.Pool, configPath string, db *sq
 	r.POST("/api/design/cleanup", middleware.BearerAuth(cfg.Token), h.CleanupDesigns)
 	r.GET("/api/design", h.ListDesigns)
 	r.GET("/api/design/tags", h.ListTags)
-		r.GET("/api/ast/:id", h.GetAST)
-		r.POST("/api/ast/:id/refer-dom", middleware.BearerAuth(cfg.Token), h.GenerateReferDom)
+	r.GET("/api/ast/:id", h.GetAST)
+	r.GET("/api/ast/:id/refer-dom", h.GetReferDom)
+	r.POST("/api/ast/:id/refer-dom", middleware.BearerAuth(cfg.Token), h.GenerateReferDom)
 	// project scheme：列表与详情公开（与 design 一致），数据由 MCP 端写入。
 	r.GET("/api/project-scheme", h.ListProjectSchemes)
 	r.GET("/api/project-scheme/detail", h.GetProjectScheme)

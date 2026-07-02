@@ -95,10 +95,11 @@ func (h *Handlers) ListDesigns(c *gin.Context) {
 	out := make([]gin.H, 0, len(items))
 	for _, d := range items {
 		out = append(out, gin.H{
-			"id":        d.ID,
-			"tag":       d.Tag,
-			"createdAt": d.CreatedAt,
-			"astUrl":    base + "/api/ast/" + d.ID,
+			"id":          d.ID,
+			"tag":         d.Tag,
+			"createdAt":   d.CreatedAt,
+			"astUrl":      base + "/api/ast/" + d.ID,
+			"referDomUrl": base + "/api/ast/" + d.ID + "/refer-dom",
 		})
 	}
 
@@ -160,6 +161,25 @@ func parsePositiveInt(s string, def int) int {
 		return def
 	}
 	return n
+}
+
+// GetReferDom 公开返回某个 design 的 refer_dom（参考 DOM）及状态信息；URL 即凭据。
+func (h *Handlers) GetReferDom(c *gin.Context) {
+	id := c.Param("id")
+	referDom, status, errorsStr, err := h.designs.GetReferDom(id)
+	if errors.Is(err, services.ErrDesignNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found", "id": id})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "message": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"referDom": referDom,
+		"status":   status,
+		"errors":   errorsStr,
+	})
 }
 
 // GenerateReferDom 分析指定 design 的 AST 并生成参考 HTML DOM 结构。

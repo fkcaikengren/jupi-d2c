@@ -30,7 +30,8 @@ type queryASTInput struct {
 }
 
 type queryASTOutput struct {
-	AST string `json:"ast" jsonschema:"该 design 的 AST JSON 原文。"`
+	AST      string `json:"ast" jsonschema:"该 design 的 AST JSON 原文。"`
+	ReferDom string `json:"refer_dom" jsonschema:"该 design 的参考 DOM 结构（HTML），由 AI 根据 AST 生成。"`
 }
 
 type getSchemeInput struct {
@@ -60,8 +61,8 @@ type deps struct {
 	nowMs   func() int64
 }
 
-const queryASTDesc = `按 id 返回某次设计稿的 UI AST (也就是json格式的 DSL)。
-典型用法：拿到适配方案（get_project_scheme）后，再用本工具取 AST，把 AST 里的设计稿 px 值按方案中的“单位换算规则”转换成目标单位生成界面代码。
+const queryASTDesc = `按 id 返回某次设计稿的 UI AST (也就是json格式的 DSL)，以及该 AST 对应的参考 DOM 结构（HTML，由 AI 根据 AST 生成）。
+典型用法：拿到适配方案（get_project_scheme）后，再用本工具取 AST，把 AST 里的设计稿 px 值按方案中的”单位换算规则”转换成目标单位生成界面代码。
 其中 id 由用户提供。
 UI AST目前定位是绝对定位的，所以很多layout都是 none，但希望你在生成代码时将布局做成 flex 布局（而不是纯 absolute 布局）。 
 希望你在像素级还原页面的同时还要考虑到 px 适配、样式方案、命名语义化。`
@@ -97,14 +98,18 @@ func NewHandler(db *sql.DB, nowMs func() int64) http.Handler {
 
 	srv := mcp.NewServer(&mcp.Implementation{Name: "jupi-d2c", Version: "1"}, nil)
 
-	mcp.AddTool(srv, &mcp.Tool{Name: "query_ast", Description: queryASTDesc},
-		func(_ context.Context, _ *mcp.CallToolRequest, in queryASTInput) (*mcp.CallToolResult, queryASTOutput, error) {
-			ast, err := d.designs.GetAST(in.ID)
-			if err != nil {
-				return nil, queryASTOutput{}, err
-			}
-			return nil, queryASTOutput{AST: ast}, nil
-		})
+		mcp.AddTool(srv, &mcp.Tool{Name: "query_ast", Description: queryASTDesc},
+			func(_ context.Context, _ *mcp.CallToolRequest, in queryASTInput) (*mcp.CallToolResult, queryASTOutput, error) {
+				ast, err := d.designs.GetAST(in.ID)
+				if err != nil {
+					return nil, queryASTOutput{}, err
+				}
+				referDom, _, _, err := d.designs.GetReferDom(in.ID)
+				if err != nil && !errors.Is(err, services.ErrDesignNotFound) {
+					return nil, queryASTOutput{}, err
+				}
+				return nil, queryASTOutput{AST: ast, ReferDom: referDom}, nil
+			})
 
 	mcp.AddTool(srv, &mcp.Tool{Name: "get_project_scheme", Description: getSchemeDesc},
 		func(_ context.Context, _ *mcp.CallToolRequest, in getSchemeInput) (*mcp.CallToolResult, getSchemeOutput, error) {

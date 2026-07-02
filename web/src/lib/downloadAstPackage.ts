@@ -6,14 +6,16 @@ import JSZip from 'jszip'
  *
  * 压缩包结构：
  *  │- ast.json          （URL 已重写为相对路径的 AST）
+ *  │- refer_dom.html    （参考 DOM 结构，仅 referDomUrl 有值时包含）
  *  │- assets/
  *       │- xxx.svg
  *       │- yyy.png
  *
- * @param astUrl   AST JSON 的公网 URL（GET /api/ast/:id）
- * @param label    下载文件命名前缀（如 design id）
+ * @param astUrl      AST JSON 的公网 URL（GET /api/ast/:id）
+ * @param label       下载文件命名前缀（如 design id）
+ * @param referDomUrl refer_dom 的公网 URL（可选，有值时在 zip 中生成 refer_dom.html）
  */
-export async function downloadAstPackage(astUrl: string, label: string): Promise<void> {
+export async function downloadAstPackage(astUrl: string, label: string, referDomUrl?: string): Promise<void> {
   // 1. 拉取 AST JSON
   const res = await fetch(astUrl)
   if (!res.ok) throw new Error(`加载 AST 失败 (${res.status})`)
@@ -43,6 +45,21 @@ export async function downloadAstPackage(astUrl: string, label: string): Promise
   const zip = new JSZip()
   zip.file('ast.json', JSON.stringify(modifiedAst, null, 2))
 
+  // 6. 如有 refer_dom，拉取并写入 refer_dom.html
+  if (referDomUrl) {
+    try {
+      const rdRes = await fetch(referDomUrl)
+      if (rdRes.ok) {
+        const rdBody = (await rdRes.json()) as { referDom?: string; status?: string }
+        if (rdBody.referDom) {
+          zip.file('refer_dom.html', rdBody.referDom)
+        }
+      }
+    } catch {
+      // refer_dom 拉取失败不影响主流程
+    }
+  }
+
   const assetsFolder = zip.folder('assets')
   if (!assetsFolder) throw new Error('创建 assets 文件夹失败')
 
@@ -50,7 +67,7 @@ export async function downloadAstPackage(astUrl: string, label: string): Promise
     assetsFolder.file(filename, blob)
   }
 
-  // 6. 触发浏览器下载
+  // 7. 触发浏览器下载
   const blob = await zip.generateAsync({ type: 'blob' })
   const link = document.createElement('a')
   link.href = URL.createObjectURL(blob)

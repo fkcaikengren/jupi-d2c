@@ -122,6 +122,7 @@ export interface DesignItem {
   tag: string
   createdAt: number // unix 毫秒
   astUrl: string // 公开可访问的 AST JSON 地址（GET /api/ast/:id）
+  referDomUrl: string // 公开可访问的 refer_dom 地址（GET /api/ast/:id/refer-dom）
 }
 
 export interface DesignListResponse {
@@ -183,6 +184,19 @@ export async function getAstText(astUrl: string): Promise<string> {
 }
 
 // ===== project scheme 契约（与 internal/api/handlers/project_scheme.go 一致）=====
+
+export interface ReferDomResponse {
+  referDom: string
+  status: string
+  errors: string
+}
+
+// 拉取某个 design 的 refer_dom 内容（公开，URL 即凭据），返回 refer_dom 正文及状态。
+export async function getReferDomText(referDomUrl: string): Promise<ReferDomResponse> {
+  const res = await fetch(referDomUrl)
+  if (!res.ok) throw new Error(`加载 refer_dom 失败 (${res.status})`)
+  return res.json() as Promise<ReferDomResponse>
+}
 
 // 一条项目适配方案的列表项元信息（不含 scheme markdown 大字段）。
 export interface ProjectSchemeMeta {

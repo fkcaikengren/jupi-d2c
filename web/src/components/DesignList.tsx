@@ -2,6 +2,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronDown,
+  Code,
   Download,
   ExternalLink,
   Eye,
@@ -11,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
-import { cleanupDesigns, type DesignItem, getAstText, listDesignTags, listDesigns } from '@/api'
+import { cleanupDesigns, type DesignItem, getAstText, getReferDomText, listDesignTags, listDesigns } from '@/api'
 import { CopyButton } from '@/components/CopyButton'
 import { TagFilter } from '@/components/TagFilter'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -46,6 +47,16 @@ const CLEANUP_OPTIONS = [
   { days: 30, label: '清理 30 天前' },
 ] as const
 
+// 从完整的 AST URL 中提取路径部分用于表格展示（省略 http://host:port）。
+// 已是相对路径时原样返回，避免 new URL 抛错。
+function displayAstPath(url: string): string {
+  try {
+    return new URL(url).pathname
+  } catch {
+    return url
+  }
+}
+
 // 分页查询保存的 design，支持 tag 筛选与按时间清理，表格按生成时间倒序，
 // 点「查看 AST」打开右侧抽屉。
 export function DesignList() {
@@ -70,6 +81,12 @@ export function DesignList() {
   const [astLoading, setAstLoading] = useState(false)
   const [astError, setAstError] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
+
+  // refer_dom 抽屉状态。
+  const [activeReferDom, setActiveReferDom] = useState<DesignItem | null>(null)
+  const [referDomData, setReferDomData] = useState<{ referDom: string; status: string; errors: string } | null>(null)
+  const [referDomLoading, setReferDomLoading] = useState(false)
+  const [referDomError, setReferDomError] = useState<string | null>(null)
 
   // load 依赖 selectedTags：选中项变化时其身份变化，触发下方 effect 重新拉取第 1 页。
   const load = useCallback(
@@ -121,12 +138,27 @@ export function DesignList() {
     }
   }, [])
 
-  // 下载 AST 资源包。
+  // 打开抽屉并拉取 refer_dom。
+  const viewReferDom = useCallback(async (item: DesignItem) => {
+    setActiveReferDom(item)
+    setReferDomData(null)
+    setReferDomError(null)
+    setReferDomLoading(true)
+    try {
+      setReferDomData(await getReferDomText(item.referDomUrl))
+    } catch (e) {
+      setReferDomError(e instanceof Error ? e.message : '加载 refer_dom 失败')
+    } finally {
+      setReferDomLoading(false)
+    }
+  }, [])
+
+  // 下载 AST 资源包（含 ast.json、refer_dom.html、assets/）。
   const handleDownload = useCallback(async (item: DesignItem) => {
     if (downloading) return
     setDownloading(true)
     try {
-      await downloadAstPackage(item.astUrl, item.id)
+      await downloadAstPackage(item.astUrl, item.id, item.referDomUrl)
     } catch (e) {
       setAstError(e instanceof Error ? e.message : '下载失败')
     } finally {
@@ -234,7 +266,7 @@ export function DesignList() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
-                    <th className="px-2 py-2 font-medium">访问该 AST 的 URL</th>
+                    <th className="px-2 py-2 font-medium">AST 的 URL</th>
                     <th className="px-2 py-2 font-medium whitespace-nowrap">生成时间</th>
                     <th className="px-2 py-2 font-medium text-right">操作</th>
                   </tr>
@@ -251,7 +283,7 @@ export function DesignList() {
                             className="inline-flex items-center gap-1 truncate font-mono text-xs text-primary hover:underline"
                             title={item.astUrl}
                           >
-                            <span className="truncate">{item.astUrl}</span>
+                            <span className="truncate">{displayAstPath(item.astUrl)}</span>
                             <ExternalLink className="size-3 shrink-0" />
                           </a>
                           <CopyButton text={item.astUrl} title="复制 URL" />
@@ -268,6 +300,10 @@ export function DesignList() {
                           <Button variant="outline" size="sm" onClick={() => void viewAst(item)}>
                             <Eye className="size-4" />
                             查看 AST
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => void viewReferDom(item)}>
+                            <Code className="size-4" />
+                            查看 refer_dom
                           </Button>
                           <Button
                             variant="outline"
@@ -336,6 +372,51 @@ export function DesignList() {
         ) : (
           <pre className="rounded-md bg-muted p-3 text-xs leading-relaxed whitespace-pre-wrap break-all">
             {astText}
+          </pre>
+        )}
+      </Drawer>
+
+      <Drawer
+        open={activeReferDom !== null}
+        onClose={() => setActiveReferDom(null)}
+        title={
+          <span className="flex items-center gap-2">
+            <Code className="size-4 text-muted-foreground" />
+            Refer DOM · {activeReferDom?.id}
+            {referDomData?.referDom && <CopyButton text={referDomData.referDom} title="复制 refer_dom" />}
+          </span>
+        }
+      >
+        {referDomLoading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">加载中…</p>
+        ) : referDomError ? (
+          <Alert variant="destructive">
+            <AlertCircle />
+            <AlertTitle>加载 refer_dom 失败</AlertTitle>
+            <AlertDescription>{referDomError}</AlertDescription>
+          </Alert>
+        ) : !referDomData?.referDom ? (
+          <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <Code className="size-10 text-muted-foreground/60" />
+            <p className="text-sm font-medium">暂无 refer_dom</p>
+            <p className="max-w-sm text-xs text-muted-foreground">
+              该 design 尚未生成参考 DOM 结构。可在 AI 配置页面配置 AI 参数后，点击生成。
+            </p>
+          </div>
+        ) : referDomData.status === 'warning' ? (
+          <div className="space-y-3">
+            <Alert variant="warning">
+              <AlertCircle />
+              <AlertTitle>生成有警告</AlertTitle>
+              <AlertDescription>{referDomData.errors || '请检查 HTML 结构'}</AlertDescription>
+            </Alert>
+            <pre className="rounded-md bg-muted p-3 text-xs leading-relaxed whitespace-pre-wrap break-all">
+              {referDomData.referDom}
+            </pre>
+          </div>
+        ) : (
+          <pre className="rounded-md bg-muted p-3 text-xs leading-relaxed whitespace-pre-wrap break-all">
+            {referDomData.referDom}
           </pre>
         )}
       </Drawer>
