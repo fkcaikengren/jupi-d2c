@@ -74,11 +74,14 @@ func NewRouter(cfg config.AppConfig, pool *queue.Pool, configPath string, db *sq
 	r.POST("/api/design/cleanup", middleware.BearerAuth(cfg.Token), h.CleanupDesigns)
 	r.GET("/api/design", h.ListDesigns)
 	r.GET("/api/design/tags", h.ListTags)
-	r.GET("/api/ast/:id", h.GetAST)
+		r.GET("/api/ast/:id", h.GetAST)
+		r.POST("/api/ast/:id/refer-dom", middleware.BearerAuth(cfg.Token), h.GenerateReferDom)
 	// project scheme：列表与详情公开（与 design 一致），数据由 MCP 端写入。
 	r.GET("/api/project-scheme", h.ListProjectSchemes)
 	r.GET("/api/project-scheme/detail", h.GetProjectScheme)
 	r.POST("/api/ai-chat", middleware.BearerAuth(cfg.Token), h.AIChat)
+	r.GET("/api/ai/config", middleware.BearerAuth(cfg.Token), h.GetAIConfig)
+	r.PUT("/api/ai/config", middleware.BearerAuth(cfg.Token), h.PutAIConfig)
 	r.GET("/uploads/*relpath", h.ServeUpload)
 
 	// MCP（Streamable HTTP）：单端点 /mcp，POST 发 JSON-RPC 调用、GET 走 SSE、DELETE 结束会话。

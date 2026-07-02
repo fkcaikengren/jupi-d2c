@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"jupi-d2c/internal/api/services"
@@ -159,4 +160,46 @@ func parsePositiveInt(s string, def int) int {
 		return def
 	}
 	return n
+}
+
+// GenerateReferDom 分析指定 design 的 AST 并生成参考 HTML DOM 结构。
+// 内部逻辑（AI 调用、重试、验证、持久化）已委托给 services.AIService。
+func (h *Handlers) GenerateReferDom(c *gin.Context) {
+	id := c.Param("id")
+
+	result, err := h.ai.GenerateReferDom(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, services.ErrDesignNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found", "id": id})
+			return
+		}
+		if errors.Is(err, services.ErrAIConfigNotFound) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "AI 未配置，请先在 AI 聊天页面中配置 AI 参数"})
+			return
+		}
+		errStr := err.Error()
+		if strings.Contains(errStr, "AI 服务调用失败") || strings.Contains(errStr, "AI 服务不可用") {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "AI 服务调用失败", "message": errStr})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error", "message": errStr})
+		return
+	}
+
+	if result.Status == "warning" {
+		c.JSON(http.StatusOK, gin.H{
+			"code": "REFER_DOM_WARNING",
+			"data": gin.H{
+				"id":       id,
+				"referDom": result.ReferDom,
+				"warnings": result.Warnings,
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{
+		"id":       id,
+		"referDom": result.ReferDom,
+	}})
 }

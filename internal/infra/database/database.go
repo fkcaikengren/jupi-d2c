@@ -13,11 +13,15 @@ import (
 // schema 是幂等的建表语句：designs 存一条 AST 结果，created_at 用 unix 毫秒便于排序。
 // project_schemes 以项目绝对路径为主键，存 AI 分析得到的适配方案 markdown（单一可信来源，
 // 单位换算规则等都写在 markdown 里），供 MCP 工具按路径复用。
+// ai_config 存全局 AI 配置（单行约束）。
 const schema = `
 CREATE TABLE IF NOT EXISTS designs (
 	id         TEXT    PRIMARY KEY,
 	tag        TEXT    NOT NULL,
 	ast        TEXT    NOT NULL,
+	refer_dom  TEXT    NOT NULL DEFAULT '',
+	refer_dom_status TEXT NOT NULL DEFAULT '',
+	refer_dom_errors TEXT NOT NULL DEFAULT '',
 	created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_designs_created_at ON designs(created_at DESC);
@@ -27,6 +31,14 @@ CREATE TABLE IF NOT EXISTS project_schemes (
 	scheme       TEXT    NOT NULL,
 	created_at   INTEGER NOT NULL,
 	updated_at   INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ai_config (
+	id         INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+	url        TEXT    NOT NULL DEFAULT '',
+	key        TEXT    NOT NULL DEFAULT '',
+	model      TEXT    NOT NULL DEFAULT '',
+	updated_at INTEGER NOT NULL
 );
 `
 

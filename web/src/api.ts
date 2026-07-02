@@ -237,6 +237,45 @@ export async function putConfig(update: ConfigUpdate): Promise<ConfigResponse> {
   return body as ConfigResponse
 }
 
+// ===== AI 配置契约（与 internal/api/handlers/ai_config.go 一致）=====
+
+export interface AiConfig {
+  url: string
+  key: string // GET 返回时已 mask
+  model: string
+  updatedAt: number
+}
+
+export interface AiConfigDataResponse {
+  data: AiConfig
+}
+
+// 获取服务端保存的 AI 配置（key 已 mask）。
+export async function getAiConfig(): Promise<AiConfigDataResponse> {
+  const res = await request('/api/ai/config', { headers: authHeaders() })
+  const json = (await res.json().catch(() => ({}))) as Partial<AiConfigDataResponse> & { error?: string }
+  if (!res.ok) throw new Error(json.error ?? `获取 AI 配置失败 (${res.status})`)
+  return json as AiConfigDataResponse
+}
+
+export interface AiConfigInput {
+  url: string
+  key: string
+  model: string
+}
+
+// 保存 AI 配置到服务端。
+export async function updateAiConfig(body: AiConfigInput): Promise<AiConfigDataResponse> {
+  const res = await request('/api/ai/config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  })
+  const json = (await res.json().catch(() => ({}))) as Partial<AiConfigDataResponse> & { error?: string }
+  if (!res.ok) throw new Error(json.error ?? `保存 AI 配置失败 (${res.status})`)
+  return json as AiConfigDataResponse
+}
+
 // ===== AI Chat 契约（与 internal/api/handlers/chat.go 一致）=====
 
 export interface ChatMessage {
@@ -245,9 +284,6 @@ export interface ChatMessage {
 }
 
 export interface ChatRequest {
-  url: string
-  key: string
-  model: string
   messages: ChatMessage[]
 }
 
@@ -266,8 +302,7 @@ export interface ChatDataResponse {
   data: ChatResponse
 }
 
-// 发送 AI 聊天请求（非流式，单次生成）。
-// url/key/model 由前端页面配置，不上传到服务端持久化。
+// 发送 AI 聊天请求（非流式，单次生成）。url/key/model 由服务端配置提供。
 export async function aiChat(body: ChatRequest): Promise<ChatDataResponse> {
   const res = await request('/api/ai-chat', {
     method: 'POST',
@@ -279,4 +314,40 @@ export async function aiChat(body: ChatRequest): Promise<ChatDataResponse> {
   }
   if (!res.ok) throw new Error(json.error ?? `AI 对话失败 (${res.status})`)
   return json as ChatDataResponse
+}
+
+// ===== Refer DOM 契约（与 internal/api/handlers/design.go GenerateReferDom 一致）=====
+
+export interface HTMLError {
+  line: number
+  col: number
+  message: string
+}
+
+export interface ReferDomResult {
+  id: string
+  referDom: string
+  warnings?: HTMLError[]
+  code?: string
+}
+
+export interface ReferDomDataResponse {
+  data: ReferDomResult
+  code?: string
+}
+
+// 调用 AI 分析指定 design 的 AST/DSL 生成参考 HTML DOM 结构（需鉴权）。
+// url/key/model 由服务端配置提供，无需前端传入。
+export async function generateReferDom(
+  designId: string,
+): Promise<ReferDomDataResponse> {
+  const res = await request(`/api/ast/${encodeURIComponent(designId)}/refer-dom`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+  })
+  const json = (await res.json().catch(() => ({}))) as Partial<ReferDomDataResponse> & {
+    error?: string
+  }
+  if (!res.ok) throw new Error(json.error ?? `生成参考 DOM 失败 (${res.status})`)
+  return json as ReferDomDataResponse
 }

@@ -130,6 +130,52 @@ func (s *DesignService) DeleteOlderThan(cutoffMs int64) (int, error) {
 	return int(n), nil
 }
 
+// UpdateReferDom 更新指定 design 的 refer_dom。
+// id 不存在时返回 ErrDesignNotFound。
+func (s *DesignService) UpdateReferDom(id, referDom string) error {
+	res, err := s.db.Exec(`UPDATE designs SET refer_dom = ? WHERE id = ?`, referDom, id)
+	if err != nil {
+		return fmt.Errorf("更新 refer_dom 失败: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrDesignNotFound
+	}
+	return nil
+}
+
+// UpdateReferDomWithStatus 更新 refer_dom 同时保存状态和验证错误信息。
+// id 不存在时返回 ErrDesignNotFound。
+func (s *DesignService) UpdateReferDomWithStatus(id, referDom, status, errorsStr string) error {
+	res, err := s.db.Exec(
+		`UPDATE designs SET refer_dom = ?, refer_dom_status = ?, refer_dom_errors = ? WHERE id = ?`,
+		referDom, status, errorsStr, id,
+	)
+	if err != nil {
+		return fmt.Errorf("更新 refer_dom 及状态失败: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrDesignNotFound
+	}
+	return nil
+}
+
+// GetReferDom 返回指定 design 的 refer_dom、状态和错误信息。
+// 不存在返回 ErrDesignNotFound。
+func (s *DesignService) GetReferDom(id string) (referDom, status, errorsStr string, err error) {
+	err = s.db.QueryRow(
+		`SELECT refer_dom, refer_dom_status, refer_dom_errors FROM designs WHERE id = ?`, id,
+	).Scan(&referDom, &status, &errorsStr)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", "", ErrDesignNotFound
+	}
+	if err != nil {
+		return "", "", "", fmt.Errorf("查询 refer_dom 失败: %w", err)
+	}
+	return
+}
+
 // GetAST 返回指定 design 的 AST JSON 原文；不存在返回 ErrDesignNotFound。
 func (s *DesignService) GetAST(id string) (string, error) {
 	var ast string
